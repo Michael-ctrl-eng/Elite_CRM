@@ -1,30 +1,33 @@
+# Elite CRM Worklog
+
 ---
-Task ID: 1-7
+Task ID: 1
 Agent: Main Agent
-Task: Port features from elite-crmm, enhance VoIP, improve mobile responsiveness, organize project
+Task: Fix preview panel issues, enhance VoIP with dialpad and settings, organize project
 
 Work Log:
-- Analyzed elite-crmm repo (https://github.com/Michael-ctrl-eng/elite-crmm) feature set
-- Analyzed current Elite CRM feature set
-- Identified gaps: deal notes, VoIP contacts, mobile responsiveness, workspace settings, AI settings, invitation system
-- Added DealNote model to Prisma schema (pushed to Hostinger MySQL)
-- Created Deal Notes API at /api/deals/[id]/notes (GET + POST with activity logging)
-- Enhanced DealDetail component with notes timeline, activity tab, inline note creation
-- Created VoIP Contacts API at /api/voip/contacts (customers + companies with phone numbers)
-- Enhanced VoIPPanel with tabs: Online Users (WebRTC) + Contacts (tel: protocol)
-- Rewrote DealsPage with mobile-first responsive design (swipeable stages on mobile, pipeline/list view toggle on desktop)
-- Dashboard already had good responsive design
-- User requested to skip AI Settings and Invitation system
-- Removed Invitation model from schema, removed AI/Invitation API directories
-- Fixed DealDetail imports (Badge from badge, Button from button)
-- Updated Deal type to support both title/dealName and value/amount
-- Ran lint: 0 errors, only 3rd party warnings
-- Dev server running successfully on port 3000
+- Checked dev server status - was not running, restarted it
+- Found cross-origin warning from preview panel, added `allowedDevOrigins` to next.config.ts
+- Rewrote VoIPPanel.tsx with full dialpad keypad (1-9, *, 0, #), phone number input, call/dial functionality
+- Added VoIP Settings panel inside VoIPPanel with SIP provider configuration (server, port, username, password, domain)
+- Added WebRTC/ICE server configuration (STUN/TURN servers)
+- Added call preferences (Auto-Answer, Do Not Disturb)
+- Added Quick Setup Presets for popular providers (Twilio, Vonage, RingCentral, 3CX, Asterisk/FreePBX)
+- Added call history tracking in VoIP panel
+- Added SIP status indicator and provider configuration prompt
+- Created VoipSettings Prisma model with all SIP/WebRTC fields
+- Added voipSetting relation to User model
+- Created /api/voip/settings API route (GET and POST) with password masking
+- Pushed schema to Hostinger MySQL database
+- Verified AI Settings and Invitation references don't exist in codebase
+- Ran lint check - 0 errors, 13 warnings (all pre-existing)
+- Started presence service on port 3003
+- Started dev server on port 3000
 
 Stage Summary:
-- Deal Notes feature: fully working (API + UI with timeline)
-- VoIP Contacts: fully working (tab-based UI with customer/company contacts)
-- Mobile responsive Deals page: fully working (swipeable stages on mobile)
-- Skipped: AI Settings, Invitation system (per user request)
-- Schema changes pushed to Hostinger MySQL
-- 0 lint errors
+- VoIP Panel now has a complete dialpad with phone number input and call button
+- VoIP Settings accessible from gear icon in VoIP panel header
+- SIP provider presets for Twilio, Vonage, RingCentral, 3CX, Asterisk
+- Contact dial buttons now switch to dialpad tab with number populated
+- VoipSettings model persisted to MySQL database
+- Zero compilation errors

@@ -73,6 +73,7 @@ model User {
   assignedMeetings Meeting[]      @relation("AssignedMeetings")
   activityLogs     ActivityLog[]
   emailSetting     EmailSettings?
+  voipSetting      VoipSettings?
   accounts         Account[]
   sessions         Session[]
 }
@@ -298,6 +299,29 @@ model ActivityLog {
 
   space Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id])
+}
+
+// ─── VOIP SETTINGS ───
+
+model VoipSettings {
+  id           String   @id @default(cuid()) @db.VarChar(30)
+  sipServer    String   @default("") @db.VarChar(255)
+  sipPort      String   @default("5060") @db.VarChar(10)
+  sipUsername  String   @default("") @db.VarChar(255)
+  sipPassword  String   @default("") @db.VarChar(255)
+  sipDomain    String   @default("") @db.VarChar(255)
+  stunServer   String   @default("stun:stun.l.google.com:19302") @db.VarChar(255)
+  turnServer   String   @default("") @db.VarChar(255)
+  turnUsername String   @default("") @db.VarChar(255)
+  turnPassword String   @default("") @db.VarChar(255)
+  autoAnswer   Boolean  @default(false)
+  doNotDisturb Boolean  @default(false)
+  callerId     String   @default("") @db.VarChar(255)
+  userId       String   @unique @db.VarChar(30)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // ─── EMAIL SETTINGS ───

@@ -6,9 +6,9 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
-  // Remove output: "standalone" for Vercel - Vercel handles its own build output
-  // If deploying to a VPS/Docker, uncomment the line below:
-  // output: "standalone",
+  allowedDevOrigins: [
+    ".space.z.ai",
+  ],
 };
 
 export default nextConfig;

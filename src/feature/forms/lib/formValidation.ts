@@ -1,6 +1,6 @@
 export async function validateCompany(idCompany: string): Promise<boolean> {
     try {
-        const res = await fetch(`/api/admin/companies/${idCompany}`, {
+        const res = await fetch(`/api/companies/${idCompany}`, {
             method: "GET",
             cache: "no-store"
         });
@@ -14,7 +14,7 @@ export async function validateCompany(idCompany: string): Promise<boolean> {
 
 export async function validateOwner(idUser: string): Promise<boolean> {
     try {
-        const res = await fetch(`/api/admin/users/${idUser}`, {
+        const res = await fetch(`/api/users/${idUser}`, {
             method: "GET",
             cache: "no-store"
         });
@@ -27,7 +27,7 @@ export async function validateOwner(idUser: string): Promise<boolean> {
 
 export async function validateContact(idContact: string): Promise<boolean> {
     try {
-        const res = await fetch(`/api/admin/contacts/${idContact}`, {
+        const res = await fetch(`/api/contacts/${idContact}`, {
             method: "GET",
             cache: "no-store",
         });

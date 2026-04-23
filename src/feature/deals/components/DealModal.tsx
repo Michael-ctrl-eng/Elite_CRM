@@ -6,7 +6,7 @@ import { cn } from "@/libs/utils"
 import Modal from "@/components/ui/Modal"
 import { Deal } from '../types'
 import { useDealStore } from '../stores/useDealStore'
-import toast from "react-hot-toast"
+import { toast } from "sonner"
 import { useEffect } from "react"
 import { useUserStore } from "@/feature/user/store/userStore"
 import { useSession } from "next-auth/react"

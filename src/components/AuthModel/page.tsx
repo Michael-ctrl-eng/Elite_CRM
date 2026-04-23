@@ -7,7 +7,7 @@ import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import toast from "react-hot-toast"
+import { toast } from "sonner"
 
 const baseSchema = z.object({
   email: z.email("Invalid email"),

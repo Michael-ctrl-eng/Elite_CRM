@@ -1,10 +1,11 @@
 import {create} from "zustand";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import {Company} from "../types/types";
 import {exportCompaniesToExcel, exportCompaniesWithColumns, exportSingleCompanyToExcel} from "../libs/excelExport";
 import {importCompaniesFromExcel, generateCompanyImportTemplate} from "../libs/excelImport";
 import {FilterData} from "../libs/fillterData";
 import {useUserStore} from "../../user/store/userStore";
+import { getCurrentSpaceId } from "@/app/page";
 
 interface CompanyStore {
     companies: Company[];
@@ -143,9 +144,13 @@ export const useCompaniesStore = create<CompanyStore>((set, get) => ({
                 }
             }
 
+            // Add spaceId to filters
+            const spaceId = getCurrentSpaceId();
+            if (spaceId) params.append('spaceId', spaceId);
+
             // Make API call with filters
             const queryString = params.toString();
-            const url = queryString ? `/api/admin/companies?${queryString}` : '/api/admin/companies';
+            const url = queryString ? `/api/companies?${queryString}` : '/api/companies';
             const res = await fetch(url);
 
             if (!res.ok) throw new Error("Failed to fetch filtered companies");
@@ -189,8 +194,12 @@ export const useCompaniesStore = create<CompanyStore>((set, get) => ({
     fetchCompanies: async (ownerId?: string) => {
         set({loading: true});
         try {
-            const query = ownerId ? `?ownerId=${ownerId}` : "";
-            const res = await fetch(`/api/admin/companies${query}`);
+            const spaceId = getCurrentSpaceId();
+            const params = new URLSearchParams();
+            if (ownerId) params.append("ownerId", ownerId);
+            if (spaceId) params.append("spaceId", spaceId);
+            const query = params.toString();
+            const res = await fetch(`/api/companies${query ? `?${query}` : ""}`);
             if (!res.ok) throw new Error("Failed to fetch companies");
 
             const data: Company[] = await res.json();
@@ -206,10 +215,11 @@ export const useCompaniesStore = create<CompanyStore>((set, get) => ({
     // Add a new company
     addCompany: async (company) => {
         try {
-            const res = await fetch(`/api/admin/companies`, {
+            const spaceId = getCurrentSpaceId();
+            const res = await fetch(`/api/companies`, {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
-                body: JSON.stringify(company),
+                body: JSON.stringify({ ...company, spaceId }),
             });
 
             if (!res.ok) {
@@ -232,7 +242,7 @@ export const useCompaniesStore = create<CompanyStore>((set, get) => ({
     // Update a company
     updateCompany: async (id, company) => {
         try {
-            const res = await fetch(`/api/admin/companies/${id}`, {
+            const res = await fetch(`/api/companies/${id}`, {
                 method: "PATCH",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify(company),
@@ -259,7 +269,7 @@ export const useCompaniesStore = create<CompanyStore>((set, get) => ({
     // Delete a company
     deleteCompany: async (id) => {
         try {
-            const res = await fetch(`/api/admin/companies/${id}`, {
+            const res = await fetch(`/api/companies/${id}`, {
                 method: "DELETE",
             });
             if (!res.ok) throw new Error("Failed to delete company");
@@ -365,10 +375,11 @@ export const useCompaniesStore = create<CompanyStore>((set, get) => ({
                     };
 
 
-                    const res = await fetch('/api/admin/companies', {
+                    const spaceId = getCurrentSpaceId();
+                    const res = await fetch('/api/companies', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify(companyPayload),
+                        body: JSON.stringify({ ...companyPayload, spaceId }),
                     });
 
                     if (!res.ok) {

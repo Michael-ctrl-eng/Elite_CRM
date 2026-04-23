@@ -1,10 +1,11 @@
 import { create } from "zustand";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { Prospect } from "../types/types";
 import { exportProspectsToExcel, exportProspectsWithColumns, exportSingleProspectToExcel } from "../libs/excelExport";
 import { importProspectsFromExcel, generateProspectImportTemplate } from "../libs/excelImport";
 import { FilterData } from "../libs/filterData";
 import { useUserStore } from "../../user/store/userStore";
+import { getCurrentSpaceId } from "@/app/page";
 
 interface ProspectStore {
   prospects: Prospect[];
@@ -152,9 +153,12 @@ export const useProspectsStore = create<ProspectStore>((set, get) => ({
         }
       }
 
+      // Add spaceId
+      const spaceId = getCurrentSpaceId();
+      if (spaceId) params.append('spaceId', spaceId);
       // Make API call with filters
       const queryString = params.toString();
-      const url = queryString ? `/api/admin/prospects?${queryString}` : '/api/admin/prospects';
+      const url = queryString ? `/api/prospects?${queryString}` : '/api/prospects';
       const res = await fetch(url);
       
       if (!res.ok) throw new Error("Failed to fetch filtered prospects");
@@ -202,8 +206,12 @@ export const useProspectsStore = create<ProspectStore>((set, get) => ({
   fetchProspects: async (ownerId?: string) => {
     set({ loading: true });
     try {
-      const query = ownerId ? `?ownerId=${ownerId}` : "";
-      const res = await fetch(`/api/admin/prospects${query}`);
+      const spaceId = getCurrentSpaceId();
+      const params = new URLSearchParams();
+      if (ownerId) params.append("ownerId", ownerId);
+      if (spaceId) params.append("spaceId", spaceId);
+      const query = params.toString();
+      const res = await fetch(`/api/prospects${query ? `?${query}` : ""}`);
       if (!res.ok) throw new Error("Failed to fetch prospects");
 
       const data: Prospect[] = await res.json();
@@ -253,10 +261,11 @@ export const useProspectsStore = create<ProspectStore>((set, get) => ({
   // ➕ Add a new prospect
   addProspect: async (prospect) => {
     try {
-      const res = await fetch(`/api/admin/prospects`, {
+      const spaceId = getCurrentSpaceId();
+      const res = await fetch(`/api/prospects`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(prospect),
+        body: JSON.stringify({ ...prospect, spaceId }),
       });
 
       if (!res.ok) {
@@ -295,7 +304,7 @@ export const useProspectsStore = create<ProspectStore>((set, get) => ({
   updateProspect: async (id, prospect) => {
     set({ isEditing: true });
     try {
-      const res = await fetch(`/api/admin/prospects/${id}`, {
+      const res = await fetch(`/api/prospects/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(prospect),
@@ -325,7 +334,7 @@ export const useProspectsStore = create<ProspectStore>((set, get) => ({
   deleteProspect: async (id) => {
     set({ isDeleting: true });
     try {
-      const res = await fetch(`/api/admin/prospects/${id}`, {
+      const res = await fetch(`/api/prospects/${id}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Failed to delete prospect");
@@ -430,10 +439,11 @@ export const useProspectsStore = create<ProspectStore>((set, get) => ({
           };
 
 
-          const res = await fetch('/api/admin/prospects', {
+          const spaceId = getCurrentSpaceId();
+          const res = await fetch('/api/prospects', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(prospectPayload),
+            body: JSON.stringify({ ...prospectPayload, spaceId }),
           });
 
           if (!res.ok) {

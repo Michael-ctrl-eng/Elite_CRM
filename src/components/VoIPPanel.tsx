@@ -2,10 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useSession } from "next-auth/react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Phone, PhoneOff, Mic, MicOff, Volume2, VolumeX, X, UserCircle } from "lucide-react"
+import { Phone, PhoneOff, Mic, MicOff, Volume2, VolumeX, X } from "lucide-react"
 import { io, Socket } from "socket.io-client"
 
 interface VoIPPanelProps {
@@ -27,6 +25,55 @@ export default function VoIPPanel({ onClose }: VoIPPanelProps) {
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const callTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const socketRef = useRef<Socket | null>(null)
+  const currentCallRef = useRef<any>(null)
+
+  // Keep currentCallRef in sync
+  useEffect(() => {
+    currentCallRef.current = currentCall
+  }, [currentCall])
+
+  // Timer functions (defined early to avoid hoisting issues)
+  const startCallTimer = useCallback(() => {
+    setCallDuration(0)
+    if (callTimerRef.current) clearInterval(callTimerRef.current)
+    callTimerRef.current = setInterval(() => setCallDuration(d => d + 1), 1000)
+  }, [])
+
+  const stopCallTimer = useCallback(() => {
+    if (callTimerRef.current) {
+      clearInterval(callTimerRef.current)
+      callTimerRef.current = null
+    }
+  }, [])
+
+  const endCall = useCallback(() => {
+    const call = currentCallRef.current
+    const sock = socketRef.current
+    if (call && sock) {
+      const targetId = call.toUserId || call.fromUserId
+      sock.emit("hang-up", { targetUserId: targetId, callId: call.callId })
+    }
+
+    localStreamRef.current?.getTracks().forEach(t => t.stop())
+    peerConnectionRef.current?.close()
+    peerConnectionRef.current = null
+    localStreamRef.current = null
+    remoteStreamRef.current = null
+
+    setCallState("idle")
+    setCurrentCall(null)
+    setIsMuted(false)
+    setIsDeafened(false)
+    setCallDuration(0)
+    stopCallTimer()
+  }, [stopCallTimer])
+
+  const formatDuration = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, "0")
+    const s = (seconds % 60).toString().padStart(2, "0")
+    return `${m}:${s}`
+  }
 
   // Fetch online users
   useEffect(() => {
@@ -47,6 +94,8 @@ export default function VoIPPanel({ onClose }: VoIPPanelProps) {
   // Connect to socket for VoIP signaling
   useEffect(() => {
     const newSocket = io("/?XTransformPort=3003", { transports: ["websocket"] })
+    socketRef.current = newSocket
+
     newSocket.on("connect", () => {
       if (session?.user) {
         newSocket.emit("auth", {
@@ -90,22 +139,7 @@ export default function VoIPPanel({ onClose }: VoIPPanelProps) {
 
     setSocket(newSocket)
     return () => { newSocket.close() }
-  }, [session])
-
-  const startCallTimer = () => {
-    setCallDuration(0)
-    callTimerRef.current = setInterval(() => setCallDuration(d => d + 1), 1000)
-  }
-
-  const stopCallTimer = () => {
-    if (callTimerRef.current) { clearInterval(callTimerRef.current); callTimerRef.current = null }
-  }
-
-  const formatDuration = (seconds: number) => {
-    const m = Math.floor(seconds / 60).toString().padStart(2, "0")
-    const s = (seconds % 60).toString().padStart(2, "0")
-    return `${m}:${s}`
-  }
+  }, [session, startCallTimer, endCall])
 
   const createPeerConnection = useCallback(() => {
     const config: RTCConfiguration = {
@@ -117,9 +151,9 @@ export default function VoIPPanel({ onClose }: VoIPPanelProps) {
     const pc = new RTCPeerConnection(config)
 
     pc.onicecandidate = (event) => {
-      if (event.candidate && socket && currentCall) {
-        socket.emit("ice-candidate", {
-          targetUserId: currentCall.toUserId || currentCall.fromUserId,
+      if (event.candidate && socketRef.current && currentCallRef.current) {
+        socketRef.current.emit("ice-candidate", {
+          targetUserId: currentCallRef.current.toUserId || currentCallRef.current.fromUserId,
           candidate: event.candidate,
         })
       }
@@ -140,7 +174,7 @@ export default function VoIPPanel({ onClose }: VoIPPanelProps) {
 
     peerConnectionRef.current = pc
     return pc
-  }, [socket, currentCall])
+  }, [endCall])
 
   const startCall = async (targetUserId: string, targetUserName: string) => {
     try {
@@ -157,7 +191,7 @@ export default function VoIPPanel({ onClose }: VoIPPanelProps) {
       setCurrentCall({ callId, toUserId: targetUserId, toUserName: targetUserName })
       setCallState("calling")
 
-      socket?.emit("call-user", { targetUserId, offer, callId })
+      socketRef.current?.emit("call-user", { targetUserId, offer, callId })
     } catch (e) {
       console.error("Start call error:", e)
       alert("Could not access microphone. Please allow microphone permissions.")
@@ -177,7 +211,7 @@ export default function VoIPPanel({ onClose }: VoIPPanelProps) {
       const answer = await pc.createAnswer()
       await pc.setLocalDescription(answer)
 
-      socket?.emit("answer-call", {
+      socketRef.current?.emit("answer-call", {
         targetUserId: currentCall.fromUserId,
         answer,
         callId: currentCall.callId,
@@ -189,26 +223,6 @@ export default function VoIPPanel({ onClose }: VoIPPanelProps) {
       console.error("Answer call error:", e)
       alert("Could not access microphone.")
     }
-  }
-
-  const endCall = () => {
-    if (currentCall && socket) {
-      const targetId = currentCall.toUserId || currentCall.fromUserId
-      socket.emit("hang-up", { targetUserId: targetId, callId: currentCall.callId })
-    }
-
-    localStreamRef.current?.getTracks().forEach(t => t.stop())
-    peerConnectionRef.current?.close()
-    peerConnectionRef.current = null
-    localStreamRef.current = null
-    remoteStreamRef.current = null
-
-    setCallState("idle")
-    setCurrentCall(null)
-    setIsMuted(false)
-    setIsDeafened(false)
-    setCallDuration(0)
-    stopCallTimer()
   }
 
   const toggleMute = () => {

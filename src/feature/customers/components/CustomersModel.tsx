@@ -7,7 +7,7 @@ import Modal from "@/components/ui/Modal"
 import CustomerForm from "./CustomersForm"
 import { useCustomersStore } from "../stores/useCustomersStore"
 import { Customer } from "../types/types"
-import toast from "react-hot-toast"
+import { toast } from "sonner"
 import { useUserStore } from "@/feature/user/store/userStore"
 import { useEffect } from "react"
 

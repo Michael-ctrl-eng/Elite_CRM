@@ -1,10 +1,11 @@
 import { create } from "zustand";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { Deal } from "../types";
 import { exportDealsToExcel, exportDealsWithColumns, exportSingleDealToExcel } from "../libs/excelExport";
 import { importDealsFromExcel, generateDealImportTemplate } from "../libs/excelImport";
 import { FilterData } from "../libs/filterData";
-import { useUserStore } from "../../user/store/userStore";
+import { useUserStore } from "../../user/store/userStore"
+import { getCurrentSpaceId } from "@/app/page";
 
 
 interface DealStore {
@@ -164,9 +165,11 @@ export const useDealStore = create<DealStore>((set, get) => ({
         params.append('closeDateFrom', localISO);
       }
 
+      const spaceId = getCurrentSpaceId();
+      if (spaceId) params.append('spaceId', spaceId);
       // Make API call with filters
       const queryString = params.toString();
-      const url = queryString ? `/api/admin/deals?${queryString}` : '/api/admin/deals';
+      const url = queryString ? `/api/deals?${queryString}` : '/api/deals';
       const res = await fetch(url);
       
       if (!res.ok) throw new Error("Failed to fetch filtered deals");
@@ -235,8 +238,12 @@ export const useDealStore = create<DealStore>((set, get) => ({
   fetchDeals: async (ownerId?: string) => {
     set({ loading: true });
     try {
-      const query = ownerId ? `?ownerId=${ownerId}` : "";
-      const res = await fetch(`/api/admin/deals${query}`);
+      const spaceId = getCurrentSpaceId();
+      const params = new URLSearchParams();
+      if (ownerId) params.append("ownerId", ownerId);
+      if (spaceId) params.append("spaceId", spaceId);
+      const query = params.toString();
+      const res = await fetch(`/api/deals${query ? `?${query}` : ""}`);
       if (!res.ok) throw new Error("Failed to fetch deals");
 
       const data: any[] = await res.json();
@@ -276,10 +283,11 @@ export const useDealStore = create<DealStore>((set, get) => ({
   // ➕ Add a new deal
   addDeal: async (deal) => {
     try {
-      const res = await fetch(`/api/admin/deals`, {
+      const spaceId = getCurrentSpaceId();
+      const res = await fetch(`/api/deals`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(deal),
+        body: JSON.stringify({ ...deal, spaceId }),
       });
 
       if (!res.ok) {
@@ -310,7 +318,7 @@ export const useDealStore = create<DealStore>((set, get) => ({
   // ✏️ Update a deal
   updateDeal: async (id, deal) => {
     try {
-      const res = await fetch(`/api/admin/deals/${id}`, {
+      const res = await fetch(`/api/deals/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(deal),
@@ -345,7 +353,7 @@ export const useDealStore = create<DealStore>((set, get) => ({
   // ❌ Delete a deal
   deleteDeal: async (id) => {
     try {
-      const res = await fetch(`/api/admin/deals/${id}`, {
+      const res = await fetch(`/api/deals/${id}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Failed to delete deal");
@@ -444,10 +452,11 @@ export const useDealStore = create<DealStore>((set, get) => ({
             amount: dealData.amount || 0,
           };
 
-          const res = await fetch('/api/admin/deals', {
+          const spaceId = getCurrentSpaceId();
+          const res = await fetch('/api/deals', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(dealPayload),
+            body: JSON.stringify({ ...dealPayload, spaceId }),
           });
 
           if (!res.ok) {

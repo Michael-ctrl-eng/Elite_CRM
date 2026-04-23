@@ -2,7 +2,7 @@ import type { Activity } from "../types/Types"
 
 export const fetchRecentActivities = async (): Promise<Activity[]> => {
   try {
-    const response = await fetch('/api/admin/activity?limit=10');
+    const response = await fetch('/api/activity?limit=10');
     if (!response.ok) {
       throw new Error('Failed to fetch activities');
     }

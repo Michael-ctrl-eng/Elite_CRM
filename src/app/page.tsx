@@ -60,9 +60,9 @@ const TodosPage = dynamic(() => import("@/feature/todo/components/TodosPage"), {
 const MeetingsPage = dynamic(() => import("@/feature/meetings/components/MeetingsPage"), { ssr: false })
 const ProspectsPage = dynamic(() => import("@/feature/prospects/components/ProspectsPage"), { ssr: false })
 const CustomersPage = dynamic(() => import("@/feature/customers/components/CustomersPage"), { ssr: false })
-const CompaniesPage = dynamic(() => import("@/feature/companies/components/CompaniesPage"), { ssr: false })
-const UsersSettings = dynamic(() => import("@/feature/settings/users/UsersSettingsPage"), { ssr: false })
-const EmailSettings = dynamic(() => import("@/feature/settings/email/components/EmailSettingsPage"), { ssr: false })
+const CompaniesPage = dynamic(() => import("@/feature/companies/components").then(m => ({ default: m.default })), { ssr: false })
+const UsersSettings = dynamic(() => import("@/feature/settings/users").then(m => ({ default: m.default })), { ssr: false })
+const EmailSettings = dynamic(() => import("@/feature/settings/email/components").then(m => ({ default: m.default })), { ssr: false })
 
 function AppContent() {
   const { data: session, status } = useSession()

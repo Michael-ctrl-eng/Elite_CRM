@@ -23,12 +23,20 @@ export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const userId = (session.user as any).id
+    const globalRole = (session.user as any).globalRole
 
     const { searchParams } = new URL(req.url)
     const spaceId = searchParams.get("spaceId")
-    if (!spaceId) return NextResponse.json({ error: "spaceId required" }, { status: 422 })
 
-    const where: any = { spaceId }
+    // Build where clause
+    const where: any = {}
+    if (spaceId) {
+      where.spaceId = spaceId
+    } else if (globalRole !== "superadmin") {
+      const memberships = await db.spaceMember.findMany({ where: { userId }, select: { spaceId: true } })
+      where.spaceId = { in: memberships.map(m => m.spaceId) }
+    }
     const stage = searchParams.get("stage")
     if (stage) where.stage = stage
     const search = searchParams.get("search")
@@ -55,10 +63,17 @@ export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
-    const body = await req.json()
-    const data = dealSchema.parse(body)
     const userId = (session.user as any).id
+    let body = await req.json()
+
+    // If no spaceId, use user's first space
+    if (!body.spaceId) {
+      const membership = await db.spaceMember.findFirst({ where: { userId }, orderBy: { joinedAt: "asc" } })
+      if (!membership) return NextResponse.json({ error: "No space available" }, { status: 422 })
+      body.spaceId = membership.spaceId
+    }
+
+    const data = dealSchema.parse(body)
 
     const deal = await db.deal.create({
       data: {

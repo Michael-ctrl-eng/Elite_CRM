@@ -30,7 +30,7 @@ const formatRangeDisplay = (range: string): string => {
 
 export const fetchMetricsData = async (range: string): Promise<MetricData[]> => {
   try {
-    const response = await fetch(`/api/admin/deals/stats?range=${range}`)
+    const response = await fetch(`/api/deals/stats?range=${range}`)
     if (!response.ok) {
       throw new Error('Failed to fetch deals stats')
     }

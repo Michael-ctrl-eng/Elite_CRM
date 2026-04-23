@@ -1,7 +1,7 @@
 "use client"
 import { Button } from "@/components/ui/Button"
 import { Plus, Trash } from "lucide-react"
-import toast from "react-hot-toast"
+import { toast } from "sonner"
 import { deleteUsers } from "../libs/usersApi"
 
 

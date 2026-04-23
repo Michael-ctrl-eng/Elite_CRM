@@ -1,10 +1,11 @@
 import { create } from "zustand";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { Customer } from "../types/types";
 import { exportCustomersToExcel, exportCustomersWithColumns, exportSingleCustomerToExcel } from "../libs/excelExport";
 import { importCustomersFromExcel, generateCustomerImportTemplate } from "../libs/excelImport";
 import { FilterData } from "../libs/fillterData";
 import { useUserStore } from "../../user/store/userStore";
+import { getCurrentSpaceId } from "@/app/page";
 
 interface CustomerStore {
   customers: Customer[];
@@ -149,9 +150,11 @@ export const useCustomersStore = create<CustomerStore>((set, get) => ({
         }
       }
 
+      const spaceId = getCurrentSpaceId();
+      if (spaceId) params.append('spaceId', spaceId);
       // Make API call with filters
       const queryString = params.toString();
-      const url = queryString ? `/api/admin/customers?${queryString}` : '/api/admin/customers';
+      const url = queryString ? `/api/customers?${queryString}` : '/api/customers';
       const res = await fetch(url);
       
       if (!res.ok) throw new Error("Failed to fetch filtered customers");
@@ -196,8 +199,12 @@ export const useCustomersStore = create<CustomerStore>((set, get) => ({
   fetchCustomers: async (ownerId?: string) => {
     set({ loading: true });
     try {
-      const query = ownerId ? `?ownerId=${ownerId}` : "";
-      const res = await fetch(`/api/admin/customers${query}`);
+      const spaceId = getCurrentSpaceId();
+      const params = new URLSearchParams();
+      if (ownerId) params.append("ownerId", ownerId);
+      if (spaceId) params.append("spaceId", spaceId);
+      const query = params.toString();
+      const res = await fetch(`/api/customers${query ? `?${query}` : ""}`);
       if (!res.ok) throw new Error("Failed to fetch customers");
 
       const data: Customer[] = await res.json();
@@ -213,10 +220,11 @@ export const useCustomersStore = create<CustomerStore>((set, get) => ({
   // ➕ Add a new customer
   addCustomer: async (customer) => {
     try {
-      const res = await fetch(`/api/admin/customers`, {
+      const spaceId = getCurrentSpaceId();
+      const res = await fetch(`/api/customers`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(customer),
+        body: JSON.stringify({ ...customer, spaceId }),
       });
 
       if (!res.ok) {
@@ -239,7 +247,7 @@ export const useCustomersStore = create<CustomerStore>((set, get) => ({
   updateCustomer: async (id, customer) => {
     set({ isEditing: true });
     try {
-      const res = await fetch(`/api/admin/customers/${id}`, {
+      const res = await fetch(`/api/customers/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(customer),
@@ -269,7 +277,7 @@ export const useCustomersStore = create<CustomerStore>((set, get) => ({
   deleteCustomer: async (id) => {
     set({ isDeleting: true });
     try {
-      const res = await fetch(`/api/admin/customers/${id}`, {
+      const res = await fetch(`/api/customers/${id}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Failed to delete customer");
@@ -382,10 +390,11 @@ export const useCustomersStore = create<CustomerStore>((set, get) => ({
           };
 
 
-          const res = await fetch('/api/admin/customers', {
+          const spaceId = getCurrentSpaceId();
+          const res = await fetch('/api/customers', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(customerPayload),
+            body: JSON.stringify({ ...customerPayload, spaceId }),
           });
 
           if (!res.ok) {

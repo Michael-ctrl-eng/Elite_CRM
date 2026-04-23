@@ -43,7 +43,7 @@ export default function SideBar({ onToggleVoIP }: { onToggleVoIP?: () => void })
       fetch("/api/spaces").then(r => r.json()).then(data => {
         if (Array.isArray(data)) {
           setSpaces(data)
-          if (!currentSpaceId && data.length > 0) {
+          if (!spaceId && data.length > 0) {
             setCurrentSpaceId(data[0].id)
           }
         }

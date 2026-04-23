@@ -6,7 +6,7 @@ function transformUserForUI(dbUser: any): UserType {
   return {
     id: dbUser.id,
     name: dbUser.name || dbUser.email, // Use email if name is not available
-    ownerImage: `https://i.pravatar.cc/32?img=${dbUser.id.slice(-1)}`, // Generate avatar based on user ID
+    ownerImage: dbUser.image || null, // Use actual user image
     registrationDate: dbUser.createdAt ? new Date(dbUser.createdAt).toLocaleDateString('en-US', {
       month: 'short',
       day: '2-digit',
@@ -15,7 +15,7 @@ function transformUserForUI(dbUser: any): UserType {
       minute: '2-digit',
       hour12: true
     }) : 'N/A',
-    lastLogin: dbUser.lastLogin ? new Date(dbUser.lastLogin).toLocaleDateString('en-US', {
+    lastLogin: (dbUser.lastSeen || dbUser.lastLogin) ? new Date(dbUser.lastSeen || dbUser.lastLogin).toLocaleDateString('en-US', {
       month: 'short',
       day: '2-digit',
       year: 'numeric',

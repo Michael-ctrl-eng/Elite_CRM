@@ -1,8 +1,9 @@
 import { create } from "zustand";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { Meeting } from "../types/meeting";
 import { FilterData, meetingFilterData } from "../libs/filterData";
 import { useUserStore } from "../../user/store/userStore";
+import { getCurrentSpaceId } from "@/app/page";
 
 interface MeetingStore {
   meetings: Meeting[];
@@ -130,9 +131,11 @@ export const useMeetingsStore = create<MeetingStore>((set, get) => ({
         }
       }
 
+      const spaceId = getCurrentSpaceId();
+      if (spaceId) params.append('spaceId', spaceId);
       // Make API call with filters
       const queryString = params.toString();
-      const url = queryString ? `/api/admin/meetings?${queryString}` : '/api/admin/meetings';
+      const url = queryString ? `/api/meetings?${queryString}` : '/api/meetings';
       const res = await fetch(url);
       
       if (!res.ok) throw new Error("Failed to fetch filtered meetings");
@@ -174,8 +177,12 @@ export const useMeetingsStore = create<MeetingStore>((set, get) => ({
   fetchMeetings: async (ownerId?: string) => {
     set({ loading: true });
     try {
-      const query = ownerId ? `?ownerId=${ownerId}` : "";
-      const res = await fetch(`/api/admin/meetings${query}`);
+      const spaceId = getCurrentSpaceId();
+      const params = new URLSearchParams();
+      if (ownerId) params.append("ownerId", ownerId);
+      if (spaceId) params.append("spaceId", spaceId);
+      const query = params.toString();
+      const res = await fetch(`/api/meetings${query ? `?${query}` : ""}`);
       if (!res.ok) throw new Error("Failed to fetch meetings");
 
       const data: any[] = await res.json();
@@ -192,10 +199,11 @@ export const useMeetingsStore = create<MeetingStore>((set, get) => ({
   // ➕ Add a new meeting
   addMeeting: async (meeting) => {
     try {
-      const res = await fetch(`/api/admin/meetings`, {
+      const spaceId = getCurrentSpaceId();
+      const res = await fetch(`/api/meetings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(meeting),
+        body: JSON.stringify({ ...meeting, spaceId }),
       });
 
       if (!res.ok) {
@@ -219,7 +227,7 @@ export const useMeetingsStore = create<MeetingStore>((set, get) => ({
   updateMeeting: async (id, meeting) => {
     set({ isEditing: true });
     try {
-      const res = await fetch(`/api/admin/meetings/${id}`, {
+      const res = await fetch(`/api/meetings/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(meeting),
@@ -251,7 +259,7 @@ export const useMeetingsStore = create<MeetingStore>((set, get) => ({
   deleteMeeting: async (id) => {
     set({ isDeleting: true });
     try {
-      const res = await fetch(`/api/admin/meetings/${id}`, {
+      const res = await fetch(`/api/meetings/${id}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Failed to delete meeting");

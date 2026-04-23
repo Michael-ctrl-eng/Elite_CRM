@@ -132,7 +132,7 @@ export async function GET(req: Request) {
   }
 }
 
-// For GET by id, PATCH, DELETE we route to /api/admin/todos/[id]
+// For GET by id, PATCH, DELETE we route to /api/todos/[id]
 export async function handleMethodWithId(req: Request, id: string) {
   try {
     const method = req.method?.toUpperCase();

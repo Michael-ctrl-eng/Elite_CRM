@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { User } from "../types/types";
 
 interface UserStore {
@@ -29,15 +29,11 @@ export const useUserStore = create<UserStore>((set, get) => ({
     if (!res.ok) throw new Error("Failed to fetch users");
 
     const data = await res.json();
-    if (data.success) {
-      // ✅ Only include users with status "active"
-      const activeUsers = data.users.filter((user: any) => user.status === "Active");
+    // Handle both array and {success, users} response formats
+    const usersList = Array.isArray(data) ? data : (data.success ? data.users : []);
+    const activeUsers = usersList.filter((user: any) => user.status === "Active");
 
-      set({ users: activeUsers, loading: false });
-    } else {
-      throw new Error(data.error || "Failed to fetch users");
-    }
-    
+    set({ users: activeUsers, loading: false });
   } catch (err: any) {
     console.error("fetchUsers error:", err);
     toast.error("Failed to load users");
@@ -64,16 +60,14 @@ export const useUserStore = create<UserStore>((set, get) => ({
       const res = await fetch('/api/auth/user');
       if (res.ok) {
         const data = await res.json();
-        if (data.success && data.user) {
-          const currentUser = data.user;
-          // Add to users if not already there
-          const updatedUsers = [...users];
-          if (!updatedUsers.find(u => u.id === currentUser.id)) {
-            updatedUsers.push(currentUser);
-            set({ users: updatedUsers });
+        const usersList = Array.isArray(data) ? data : (data.success ? data.users : []);
+        const activeUsers = usersList.filter((u: any) => u.status === "Active");
+        if (activeUsers.length > 0 && storedUserId) {
+          const currentUser = activeUsers.find((u: any) => u.id === storedUserId);
+          if (currentUser) {
+            set({ currentUser, users: activeUsers });
+            localStorage.setItem('currentUserId', currentUser.id);
           }
-          set({ currentUser });
-          localStorage.setItem('currentUserId', currentUser.id);
         }
       }
     } catch (err) {

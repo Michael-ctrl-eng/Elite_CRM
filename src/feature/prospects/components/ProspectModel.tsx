@@ -7,7 +7,7 @@ import Modal from "@/components/ui/Modal"
 import ProspectForm from "./ProspectForm"
 import { useProspectsStore } from "../stores/useProspectsStore"
 import { Prospect } from "../types/types"
-import toast from "react-hot-toast"
+import { toast } from "sonner"
 import { useUserStore } from "@/feature/user/store/userStore"
 import { useEffect } from "react"
 

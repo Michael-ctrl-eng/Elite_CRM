@@ -28,7 +28,7 @@ export function PipelineCard({ range = "this_month" }: { range?: string }) {
     const fetchPipelineData = async () => {
       try {
         setLoading(true)
-        const response = await fetch(`/api/admin/deals/stats?range=${range}`)
+        const response = await fetch(`/api/deals/stats?range=${range}`)
         if (!response.ok) {
           throw new Error('Failed to fetch pipeline data')
         }

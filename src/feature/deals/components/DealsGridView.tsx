@@ -9,7 +9,7 @@ import DealModal from './DealModal'
 import { useDealStore } from '../stores/useDealStore'
 import { useUserStore } from '../../user/store/userStore'
 import { useEffect } from 'react';
-import toast from "react-hot-toast"
+import { toast } from "sonner"
 
 
 export default function DealsGridView() {

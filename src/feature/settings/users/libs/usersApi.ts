@@ -21,7 +21,10 @@ export async function fetchUsers() {
         throw new Error(data.error || 'Failed to fetch users');
     }
 
-    return await response.json();
+    const data = await response.json();
+    // Handle both array and {success, users} response formats
+    const users = Array.isArray(data) ? data : (data.success ? data.users : []);
+    return { success: true, users };
 }
 
 export async function deleteUsers(userIds: string[]) {

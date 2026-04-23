@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from "@/components/ui/Button";
 import { Save, Loader2 } from "lucide-react";
 import { createUser } from "../libs/usersApi";
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 export default function AddUser({ onClose }: { onClose?: () => void }) {
     const [email, setEmail] = useState('');

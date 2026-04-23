@@ -10,7 +10,7 @@ import type { TaskData } from '../types/types'
 import TodoModel from './TodoModel'
 import Loading from '@/components/ui/Loading'
 
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 export default function TodoGridView() {
   const { filteredTodos, fetchTodos, loading, updateTodo ,deleteTodo } = useTodoStore()

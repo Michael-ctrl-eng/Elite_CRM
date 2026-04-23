@@ -1,7 +1,8 @@
 import { create } from "zustand";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { TaskData } from "../types/types";
 import { useUserStore } from "../../user/store/userStore";
+import { getCurrentSpaceId } from "@/app/page";
 
 type FilterOption = { id: string; label: string; checked: boolean };
 type TodoFilters = {
@@ -116,9 +117,11 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
         }
       }
 
+      const spaceId = getCurrentSpaceId();
+      if (spaceId) params.append('spaceId', spaceId);
       // Make API call with filters
       const queryString = params.toString();
-      const url = queryString ? `/api/admin/todos?${queryString}` : '/api/admin/todos';
+      const url = queryString ? `/api/todos?${queryString}` : '/api/todos';
       const res = await fetch(url);
       
       if (!res.ok) throw new Error("Failed to fetch filtered todos");
@@ -164,8 +167,12 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   fetchTodos: async (ownerId?: string) => {
     set({ loading: true });
     try {
-      const query = ownerId ? `?ownerId=${ownerId}` : "";
-      const res = await fetch(`/api/admin/todos${query}`);
+      const spaceId = getCurrentSpaceId();
+      const params = new URLSearchParams();
+      if (ownerId) params.append("ownerId", ownerId);
+      if (spaceId) params.append("spaceId", spaceId);
+      const query = params.toString();
+      const res = await fetch(`/api/todos${query ? `?${query}` : ""}`);
       if (!res.ok) throw new Error("Failed to fetch todos");
 
       const data: any[] = await res.json();
@@ -181,10 +188,11 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   //  Add a new todo
   addTodo: async (todo) => {
     try {
-      const res = await fetch(`/api/admin/todos`, {
+      const spaceId = getCurrentSpaceId();
+      const res = await fetch(`/api/todos`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(todo),
+        body: JSON.stringify({ ...todo, spaceId }),
       });
 
       if (!res.ok) {
@@ -206,7 +214,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   //  Update a todo
   updateTodo: async (id, todo) => {
     try {
-      const res = await fetch(`/api/admin/todos/${id}`, {
+      const res = await fetch(`/api/todos/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(todo),
@@ -233,7 +241,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   //  Delete a todo
   deleteTodo: async (id) => {
     try {
-      const res = await fetch(`/api/admin/todos/${id}`, {
+      const res = await fetch(`/api/todos/${id}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Failed to delete todo");
@@ -254,7 +262,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   bulkDeleteTodos: async (ids) => {
     try {
       const deletePromises = ids.map(id => 
-        fetch(`/api/admin/todos/${id}`, { method: "DELETE" })
+        fetch(`/api/todos/${id}`, { method: "DELETE" })
       );
       
       const results = await Promise.allSettled(deletePromises);
@@ -280,7 +288,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   bulkUpdateTodos: async (ids, updates) => {
     try {
       const updatePromises = ids.map(id => 
-        fetch(`/api/admin/todos/${id}`, {
+        fetch(`/api/todos/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(updates),

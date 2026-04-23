@@ -110,3 +110,109 @@ Stage Summary:
 - Task reminders trigger based on reminderMinutes field
 - Deal note creation sends notification to deal owner
 - Zero build errors, pushed to GitHub successfully
+
+---
+Task ID: 1
+Agent: Schema Fix Agent
+Task: Fix Prisma SQLite schema - resolve mysql/sqlite provider mismatch
+
+Work Log:
+- Read current schema at `/home/z/my-project/prisma/schema.prisma` — found `provider = "mysql"` with SQLite DATABASE_URL
+- Read `.env` — confirmed `DATABASE_URL=file:/home/z/my-project/db/custom.db` (SQLite)
+- Changed `provider = "mysql"` to `provider = "sqlite"` in datasource block
+- Removed ALL `@db.*` attribute annotations from ALL models:
+  - Removed `@db.VarChar(N)` from 60+ fields across all models (Space, SpaceMember, User, Account, Session, VerificationToken, Deal, DealNote, Notification, Todo, Meeting, Prospect, Customer, Company, ActivityLog, VoipSettings, EmailSettings)
+  - Removed `@db.Text` from 20+ fields (description, notes, tags, address, image, logo, etc.)
+- Preserved all field types (String, Int, Float, Boolean, DateTime), all decorators (@id, @default, @unique, @relation, @@unique, @@index), and all comments
+- Verified zero `@db.` references remain in schema
+- Ran `npx prisma db push --force-reset` — successfully created SQLite database with all tables
+- Ran `npx prisma generate` — Prisma Client v6.19.2 regenerated successfully
+- Checked `src/libs/prisma.ts` and `src/lib/db.ts` — both use standard PrismaClient singleton pattern, no changes needed
+- Found `src/app/api/auth/signup/route.ts` was a stub returning 404 — rewrote with proper signup implementation using zod validation, bcryptjs password hashing, duplicate email check, and user creation with Active status
+- Appended work record to worklog.md
+
+Stage Summary:
+- Prisma schema provider changed from mysql to sqlite — matches DATABASE_URL
+- All @db.* attributes removed (SQLite doesn't support them)
+- SQLite database successfully created and synced at file:/home/z/my-project/db/custom.db
+- Prisma Client regenerated with sqlite provider
+- Signup API route now functional — creates users with hashed passwords
+- Zero @db.* attribute remnants in schema
+
+---
+Task ID: 3-a
+Agent: Reminder Field Agent
+Task: Add "reminderMinutes" field to Todo form and API so users can set task reminders
+
+Work Log:
+- Updated `TaskData` interface in `/home/z/my-project/src/feature/todo/types/types.ts` — added `reminderMinutes?: number | null`
+- Updated POST `/api/todos` schema in `/home/z/my-project/src/app/api/todos/route.ts` — added `reminderMinutes: z.number().int().min(1).nullable().optional()` to `todoSchema`
+- Updated PATCH `/api/todos/[id]` in `/home/z/my-project/src/app/api/todos/[id]/route.ts`:
+  - Added zod import and `patchSchema` with strict validation including `reminderMinutes`
+  - Replaced raw body spread with `patchSchema.parse(body)` for type safety
+  - Added proper ZodError handling in PATCH catch block
+  - Properly handles `dueDate` null conversion
+- Updated TodoForm in `/home/z/my-project/src/feature/todo/components/TodoForm.tsx`:
+  - Added `reminderOptions` array with 8 options (No reminder, 5/10/15/30 min, 1/2 hours, 1 day)
+  - Added `reminderMinutes: z.string().optional()` to form zod schema (stored as string in form)
+  - Added `reminderMinutes: ""` to initial values
+  - Added `reminderMinutes` conversion in edit mode getInitialValues (number → string)
+  - Updated submitHandler to convert string reminderMinutes to number or null on submit
+  - Added Reminder dropdown (CustomDropdown) after Due Date field
+- Verified useTodoStore already passes `reminderMinutes` through in addTodo (spreads payload to API) — no changes needed
+- Updated TodoCard in `/home/z/my-project/src/feature/todo/components/TodoCard.tsx`:
+  - Added Bell icon import from lucide-react
+  - Added `formatReminder()` helper to display human-readable reminder text (e.g., "15 min before", "1 hour before", "1 day before")
+  - Added bell icon + reminder text next to due date when `task.reminderMinutes` is set (amber color `#B45309`)
+- Ran lint check — 0 errors, 13 warnings (all pre-existing)
+
+Stage Summary:
+- TaskData type now includes `reminderMinutes?: number | null`
+- POST and PATCH API routes validate `reminderMinutes` with zod (int, min 1, nullable, optional)
+- TodoForm has Reminder dropdown with 8 preset options after Due Date field
+- Form stores reminderMinutes as string, converts to number/null on submit
+- TodoCard displays bell icon with formatted reminder time next to due date
+- Prisma schema already had `reminderMinutes Int?` field (from previous agent work)
+- Zero new lint errors
+
+---
+Task ID: 3-b
+Agent: Notification Enhancement Agent
+Task: Enhance notification system for deal updates and meeting reminders
+
+Work Log:
+- Enhanced `/api/deals/[id]/notes/route.ts` POST handler:
+  - Added logic to find all SpaceMembers with role "admin" or "manager" in the deal's space
+  - Creates `deal_update` type notifications for each admin/manager (excluding note author and deal owner who already got notified)
+  - Uses `notification.createMany()` for efficient batch creation
+- Enhanced `/api/notifications/check/route.ts`:
+  - Extended meeting check window: now also includes meetings that started within the last 30 minutes (currently happening), not just upcoming within 15 min
+  - Added "Meeting Now:" title and "has started" message for currently-happening meetings
+  - Added `task_due_today` notification type for tasks due today even without a specific reminderMinutes set
+  - Shortened duplicate check window from "today" (midnight) to last 2 hours for all notification types
+  - task_due_today checks avoid duplicates with task_reminder notifications on the same task
+- Added deal stage change notification in `/api/deals/[id]/route.ts` PATCH handler:
+  - Fetches existing deal before update to detect stage changes
+  - If stage field changed, creates `deal_update` notifications for deal owner (if not current user) and all space admins/managers (excluding current user and deal owner)
+  - Message format: "Deal 'X' moved to stage 'Y'"
+- Enhanced NotificationPanel (`/home/z/my-project/src/components/NotificationPanel.tsx`):
+  - Added browser toast notifications using sonner for unread notifications less than 5 minutes old when panel opens
+  - Added sound toggle button (Volume2/VolumeX icons) that plays a Web Audio API two-tone beep when enabled and new notifications arrive
+  - Added "Clear all" button (Trash2 icon) to delete all notifications at once
+  - Added `task_due_today` icon type (ClipboardList with orange color)
+  - Tracks previous notification IDs and panel open state to avoid re-showing toasts
+- Added DELETE `/api/notifications` route for bulk clearing all notifications for current user
+- Updated notification create zod schema to include "task_due_today" type
+- Updated Prisma schema Notification type comment to include task_due_today
+- Pushed schema to database — already in sync
+- Ran lint check — 0 errors, 13 warnings (all pre-existing)
+
+Stage Summary:
+- Deal note creation now notifies both the deal owner (deal_note type) and all space admins/managers (deal_update type)
+- Meeting reminder window expanded: now detects meetings starting within 15 min AND meetings currently happening (started within last 30 min)
+- New task_due_today notification type for tasks due today without specific reminderMinutes
+- Duplicate check window shortened from "today" to last 2 hours across all notification types
+- Deal stage changes now trigger deal_update notifications to owner and space admins/managers
+- NotificationPanel shows browser toasts for fresh unread notifications, plays beep sound (toggleable), and has Clear all button
+- New bulk DELETE endpoint at /api/notifications for clearing all notifications
+- Zero new lint errors

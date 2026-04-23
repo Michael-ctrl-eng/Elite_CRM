@@ -19,5 +19,6 @@ export interface TaskData {
     email: string;
   };
   linkedId?: string; // For API communication
+  reminderMinutes?: number | null;
 
 }

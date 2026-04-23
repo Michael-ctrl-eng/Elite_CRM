@@ -116,6 +116,32 @@ export async function POST(
       })
     }
 
+    // Notify all space admins/managers (excluding note author and deal owner who already got notified)
+    const adminsAndManagers = await db.spaceMember.findMany({
+      where: {
+        spaceId: deal.spaceId,
+        role: { in: ["admin", "manager"] },
+        userId: { notIn: [userId, deal.ownerId] },
+      },
+      select: { userId: true },
+    })
+
+    if (adminsAndManagers.length > 0) {
+      const truncatedContent = content.length > 100 ? content.substring(0, 100) + "..." : content
+      await db.notification.createMany({
+        data: adminsAndManagers.map((member) => ({
+          type: "deal_update",
+          title: `New note on deal "${deal.title}"`,
+          message: truncatedContent,
+          entityId: dealId,
+          entityType: "deal",
+          spaceId: deal.spaceId,
+          userId: member.userId,
+          createdById: userId,
+        })),
+      })
+    }
+
     return NextResponse.json(note, { status: 201 })
   } catch (error) {
     console.error("Deal Notes POST:", error)

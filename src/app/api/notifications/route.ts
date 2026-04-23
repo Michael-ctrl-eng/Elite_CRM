@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
 }
 
 const createNotificationSchema = z.object({
-  type: z.enum(["meeting_reminder", "task_reminder", "deal_update", "deal_note", "general"]),
+  type: z.enum(["meeting_reminder", "task_reminder", "task_due_today", "deal_update", "deal_note", "general"]),
   title: z.string().min(1).max(255),
   message: z.string().min(1),
   entityId: z.string().optional(),
@@ -96,6 +96,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(notification, { status: 201 })
   } catch (error) {
     console.error("Notifications POST:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
+// DELETE /api/notifications — Clear all notifications for current user
+export async function DELETE(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+    const userId = (session.user as any).id
+
+    const result = await db.notification.deleteMany({
+      where: { userId },
+    })
+
+    return NextResponse.json({ deleted: result.count })
+  } catch (error) {
+    console.error("Notifications DELETE:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

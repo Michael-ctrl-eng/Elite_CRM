@@ -14,6 +14,7 @@ const todoSchema = z.object({
   tags: z.string().optional(),
   linkedTo: z.string().optional(),
   assignedToId: z.string().optional(),
+  reminderMinutes: z.number().int().min(1).nullable().optional(),
   spaceId: z.string(),
 })
 

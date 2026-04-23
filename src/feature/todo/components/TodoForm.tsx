@@ -20,6 +20,17 @@ type Priority = "urgent" | "high" | "medium" | "low"
 const statusValues = ["to-do", "in-progress", "on-hold", "done"] as Status[]
 const priorityValues = ["urgent", "high", "medium", "low"] as Priority[]
 
+const reminderOptions = [
+    { value: "", label: "No reminder" },
+    { value: "5", label: "5 minutes before" },
+    { value: "10", label: "10 minutes before" },
+    { value: "15", label: "15 minutes before" },
+    { value: "30", label: "30 minutes before" },
+    { value: "60", label: "1 hour before" },
+    { value: "120", label: "2 hours before" },
+    { value: "1440", label: "1 day before" },
+]
+
 const todoSchema = z.object({
     taskName: z.string().trim().min(1, "Task name is required"),
     linkedTo: z.string().trim().optional(),
@@ -29,6 +40,7 @@ const todoSchema = z.object({
         {message: "Priority is required"},
     ),
     dueDate: z.string().optional(),
+    reminderMinutes: z.string().optional(),
     notes: z.string().optional(),
     files: z.array(z.any()).optional(),
 })
@@ -42,6 +54,7 @@ const initialValues: TodoFormValues = {
     status: "to-do",
     priority: "low",
     dueDate: "",
+    reminderMinutes: "",
     notes: "",
     files: [],
 }
@@ -92,6 +105,7 @@ export default function TodoForm({
                                 : initialData.status.toLowerCase() as "done",
                 priority: initialData.priority.toLowerCase() as "urgent" | "high" | "medium" | "low",
                 dueDate: initialData.dueDate ? new Date(initialData.dueDate).toISOString().split("T")[0] : "",
+                reminderMinutes: initialData.reminderMinutes != null ? String(initialData.reminderMinutes) : "",
                 notes: initialData.notes || "",
                 files: [],
             }
@@ -143,7 +157,9 @@ export default function TodoForm({
     }
 
     const submitHandler = (vals: TodoFormValues) => {
-        onSubmit({...vals, files: vals.files || []})
+        const { reminderMinutes, ...rest } = vals
+        const reminderValue = reminderMinutes ? Number(reminderMinutes) : null
+        onSubmit({ ...rest, reminderMinutes: reminderValue as any, files: vals.files || [] } as any)
         toast.success("Task saved successfully!")
         if (mode === "add") {
             reset(initialValues)
@@ -247,6 +263,16 @@ export default function TodoForm({
                                 triggerIcon="calendar"
                             />
                         )}
+                    />
+                </FieldBlock>
+
+                <FieldBlock name="reminderMinutes" label="Reminder" error={errors.reminderMinutes?.message}>
+                    <CustomDropdown
+                        name="reminderMinutes"
+                        value={getValues("reminderMinutes") || ""}
+                        onChange={(val) => setValue("reminderMinutes", val, {shouldValidate: true})}
+                        placeholder="No reminder"
+                        options={reminderOptions}
                     />
                 </FieldBlock>
 

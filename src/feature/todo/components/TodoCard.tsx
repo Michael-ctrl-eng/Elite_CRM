@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/Card"
 import { cn } from "@/libs/utils"
 import * as React from "react"
 import type { TaskData } from "../types/types"
-import { Calendar, AlertTriangle, ArrowUp, Minus, ChevronUp } from "lucide-react"
+import { Calendar, AlertTriangle, ArrowUp, Minus, ChevronUp, Bell } from "lucide-react"
 import AvatarInitials from "@/components/ui/AvatarInitials"
 
 type TodoCardProps = {
@@ -57,6 +57,12 @@ const formatDate = (dateString?: string) => {
   });
 };
 
+const formatReminder = (minutes: number): string => {
+  if (minutes >= 1440) return `${minutes / 1440} day${minutes / 1440 > 1 ? 's' : ''} before`;
+  if (minutes >= 60) return `${minutes / 60} hour${minutes / 60 > 1 ? 's' : ''} before`;
+  return `${minutes} min before`;
+};
+
 export function TodoCard({ task, className }: TodoCardProps) {
   const badgeClass = statusBadgeClass[String(task.status)] ?? "bg-[#E4E4E7] text-[#3F3F46]"
   const displayStatus = statusDisplayMap[String(task.status)] || String(task.status)
@@ -86,6 +92,12 @@ export function TodoCard({ task, className }: TodoCardProps) {
             <span className={cn(isOverdue && " font-medium")}>
               {formatDate(task.dueDate,)}
             </span>
+            {task.reminderMinutes && (
+              <span className="inline-flex items-center gap-1 text-[#B45309]" title={formatReminder(task.reminderMinutes)}>
+                <Bell className="h-3 w-3" />
+                <span>{formatReminder(task.reminderMinutes)}</span>
+              </span>
+            )}
           </div>
         )}
 

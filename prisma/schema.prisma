@@ -1,0 +1,299 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── SPACE (Tenant) ───
+
+model Space {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  logo        String?
+  industry    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members      SpaceMember[]
+  deals        Deal[]
+  todos        Todo[]
+  meetings     Meeting[]
+  prospects    Prospect[]
+  customers    Customer[]
+  companies    Company[]
+  activityLogs ActivityLog[]
+}
+
+// ─── SPACE MEMBERSHIP ───
+
+model SpaceMember {
+  id       String   @id @default(cuid())
+  userId   String
+  spaceId  String
+  role     String   @default("viewer") // admin | manager | viewer
+  joinedAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  space Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, spaceId])
+}
+
+// ─── USER ───
+
+model User {
+  id                String  @id @default(cuid())
+  email             String  @unique
+  name              String?
+  password          String?
+  image             String?
+  status            String  @default("Inactive") // Active | Inactive | Invite | Deleted
+  globalRole        String  @default("viewer")   // superadmin | admin | manager | viewer
+  isDemo            Boolean @default(false)
+  lastSeen          DateTime @default(now())
+  verificationToken String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  spaceMemberships SpaceMember[]
+  ownedDeals       Deal[]
+  ownedTodos       Todo[]
+  ownedMeetings    Meeting[]
+  ownedProspects   Prospect[]
+  ownedCustomers   Customer[]
+  ownedCompanies   Company[]
+  assignedTodos    Todo[]         @relation("AssignedTodos")
+  assignedMeetings Meeting[]      @relation("AssignedMeetings")
+  activityLogs     ActivityLog[]
+  emailSetting     EmailSettings?
+  accounts         Account[]
+  sessions         Session[]
+}
+
+// ─── NEXTAUTH MODELS ───
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String  @id @default(cuid())
+  sessionToken String  @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── DEAL ───
+
+model Deal {
+  id          String   @id @default(cuid())
+  title       String
+  value       Float?
+  currency    String   @default("USD")
+  stage       String   @default("New")
+  probability Int?
+  closeDate   DateTime?
+  description String?
+  tags        String?
+  source      String?
+  contactId   String?
+  companyId   String?
+  spaceId     String
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  space   Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  owner   User     @relation(fields: [ownerId], references: [id])
+  contact Customer? @relation(fields: [contactId], references: [id])
+  company Company?  @relation(fields: [companyId], references: [id])
+}
+
+// ─── TODO ───
+
+model Todo {
+  id           String   @id @default(cuid())
+  title        String
+  description  String?
+  status       String   @default("Todo")
+  priority     String   @default("Medium")
+  dueDate      DateTime?
+  tags         String?
+  linkedTo     String?
+  assignedToId String?
+  spaceId      String
+  ownerId      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  space      Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  owner      User  @relation(fields: [ownerId], references: [id])
+  assignedTo User? @relation("AssignedTodos", fields: [assignedToId], references: [id])
+}
+
+// ─── MEETING ───
+
+model Meeting {
+  id           String   @id @default(cuid())
+  title        String
+  description  String?
+  location     String?
+  status       String   @default("Scheduled")
+  startDate    DateTime
+  endDate      DateTime?
+  recurrence   String?
+  tags         String?
+  linkedTo     String?
+  assignedToId String?
+  spaceId      String
+  ownerId      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  space      Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  owner      User  @relation(fields: [ownerId], references: [id])
+  assignedTo User? @relation("AssignedMeetings", fields: [assignedToId], references: [id])
+}
+
+// ─── PROSPECT ───
+
+model Prospect {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  company   String?
+  position  String?
+  source    String?
+  status    String   @default("New")
+  value     Float?
+  notes     String?
+  tags      String?
+  companyId String?
+  spaceId   String
+  ownerId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  space      Space   @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  owner      User    @relation(fields: [ownerId], references: [id])
+  companyRel Company? @relation(fields: [companyId], references: [id])
+}
+
+// ─── CUSTOMER ───
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  company   String?
+  position  String?
+  status    String   @default("Active")
+  value     Float?
+  notes     String?
+  tags      String?
+  address   String?
+  companyId String?
+  spaceId   String
+  ownerId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  space      Space   @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  owner      User    @relation(fields: [ownerId], references: [id])
+  companyRel Company? @relation(fields: [companyId], references: [id])
+  deals      Deal[]
+}
+
+// ─── COMPANY ───
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  website   String?
+  industry  String?
+  status    String   @default("Active")
+  notes     String?
+  tags      String?
+  address   String?
+  spaceId   String
+  ownerId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  space     Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  owner     User      @relation(fields: [ownerId], references: [id])
+  deals     Deal[]
+  prospects Prospect[]
+  customers Customer[]
+}
+
+// ─── ACTIVITY LOG ───
+
+model ActivityLog {
+  id             String   @id @default(cuid())
+  action         String
+  entity         String
+  entityId       String?
+  details        String?
+  changedFields  String?
+  previousValues String?
+  newValues      String?
+  spaceId        String
+  userId         String
+  createdAt      DateTime @default(now())
+
+  space Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id])
+}
+
+// ─── EMAIL SETTINGS ───
+
+model EmailSettings {
+  id        String  @id @default(cuid())
+  host      String
+  port      Int     @default(465)
+  secure    Boolean @default(true)
+  sender    String
+  user      String
+  pass      String
+  userId    String  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userRel User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

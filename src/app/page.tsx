@@ -84,6 +84,18 @@ function AppContent() {
     }
   }, [session])
 
+  // Notification check
+  useEffect(() => {
+    if (session?.user) {
+      const checkNotifications = () => {
+        fetch("/api/notifications/check").catch(() => {})
+      }
+      checkNotifications()
+      const interval = setInterval(checkNotifications, 120000) // every 2 minutes
+      return () => clearInterval(interval)
+    }
+  }, [session])
+
   // Loading state
   if (status === "loading") {
     return (

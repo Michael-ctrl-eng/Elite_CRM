@@ -28,6 +28,7 @@ model Space {
   customers    Customer[]
   companies    Company[]
   activityLogs ActivityLog[]
+  notifications Notification[]
 }
 
 // ─── SPACE MEMBERSHIP ───
@@ -63,8 +64,10 @@ model User {
 
   spaceMemberships SpaceMember[]
   ownedDeals       Deal[]
-  dealNotes        DealNote[]
-  ownedTodos       Todo[]
+  dealNotes              DealNote[]
+  notifications          Notification[]
+  createdNotifications   Notification[] @relation("CreatedBy")
+  ownedTodos             Todo[]
   ownedMeetings    Meeting[]
   ownedProspects   Prospect[]
   ownedCustomers   Customer[]
@@ -158,6 +161,29 @@ model DealNote {
   user User @relation(fields: [userId], references: [id])
 }
 
+// ─── NOTIFICATION ───
+
+model Notification {
+  id          String   @id @default(cuid()) @db.VarChar(30)
+  type        String   @db.VarChar(30)   // meeting_reminder | task_reminder | deal_update | deal_note | general
+  title       String   @db.VarChar(255)
+  message     String   @db.Text
+  read        Boolean  @default(false)
+  entityId    String?  @db.VarChar(30)   // ID of the related entity (deal, meeting, todo)
+  entityType  String?  @db.VarChar(30)   // deal | meeting | todo
+  spaceId     String?  @db.VarChar(30)
+  userId      String   @db.VarChar(30)   // The user who receives this notification
+  createdById String?  @db.VarChar(30)   // The user who triggered this notification
+  createdAt   DateTime @default(now())
+
+  user       User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdBy  User? @relation("CreatedBy", fields: [createdById], references: [id])
+  space      Space? @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
+}
+
 // ─── TODO ───
 
 model Todo {
@@ -167,9 +193,10 @@ model Todo {
   notes        String?  @db.Text
   status       String   @default("Todo") @db.VarChar(30)
   priority     String   @default("Medium") @db.VarChar(20)
-  dueDate      DateTime?
-  tags         String?  @db.Text
-  linkedTo     String?  @db.VarChar(100)
+  dueDate         DateTime?
+  reminderMinutes Int?     // How many minutes before dueDate to send reminder (null = no reminder)
+  tags             String?  @db.Text
+  linkedTo         String?  @db.VarChar(100)
   assignedToId String?  @db.VarChar(30)
   spaceId      String   @db.VarChar(30)
   ownerId      String   @db.VarChar(30)

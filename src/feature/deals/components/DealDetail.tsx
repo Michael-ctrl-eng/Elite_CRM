@@ -6,7 +6,7 @@ import { Deal } from '../types';
 import AvatarInitials from '@/components/ui/AvatarInitials';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { X, Edit, Trash2, Download, Plus, Loader, Send, MessageSquare, Activity } from 'lucide-react';
+import { X, Edit, Trash2, Download, Plus, Loader, Send, MessageSquare, Activity, RefreshCw, Clock, User, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface DealNoteUser {
@@ -67,7 +67,7 @@ export default function DealDetail({
   const [activityLoading, setActivityLoading] = useState(false);
   const [newNoteContent, setNewNoteContent] = useState('');
   const [submittingNote, setSubmittingNote] = useState(false);
-  const [activeTab, setActiveTab] = useState<'notes' | 'activity'>('notes');
+  const [activeTab, setActiveTab] = useState<'updates' | 'activity'>('updates');
 
   const fetchNotes = useCallback(async (dealId: string) => {
     setNotesLoading(true);
@@ -90,11 +90,10 @@ export default function DealDetail({
       const res = await fetch(`/api/deals/${dealId}`);
       if (res.ok) {
         const dealData = await res.json();
-        // Fetch activity logs for this deal's space, filtered by entityId
         const spaceId = dealData.spaceId;
         const logRes = await fetch(`/api/activity?spaceId=${spaceId}&entityId=${dealId}&limit=20`);
         if (logRes.ok) {
-          const logData = await logRes.json();
+          const logData = await res.json();
           setActivityLog(Array.isArray(logData) ? logData : []);
         } else {
           setActivityLog([]);
@@ -112,7 +111,7 @@ export default function DealDetail({
     if (isOpen && deal?.id) {
       fetchNotes(deal.id);
       fetchActivityLog(deal.id);
-      setActiveTab('notes');
+      setActiveTab('updates');
       setNewNoteContent('');
     }
   }, [isOpen, deal?.id, fetchNotes, fetchActivityLog]);
@@ -130,14 +129,14 @@ export default function DealDetail({
         const newNote = await res.json();
         setNotes((prev) => [newNote, ...prev]);
         setNewNoteContent('');
-        toast.success('Note added successfully');
+        toast.success('Update added successfully');
       } else {
         const err = await res.json();
-        toast.error(err.error || 'Failed to add note');
+        toast.error(err.error || 'Failed to add update');
       }
     } catch (err) {
       console.error('Failed to add note:', err);
-      toast.error('Failed to add note');
+      toast.error('Failed to add update');
     } finally {
       setSubmittingNote(false);
     }
@@ -156,7 +155,7 @@ export default function DealDetail({
   const getContactName = (contact: any) => {
     if (!contact) return 'No Contact';
     if (typeof contact === 'string') return contact;
-    if (typeof contact === 'object' && contact?.fullName) return contact.fullName;
+    if (typeof company === 'object' && contact?.fullName) return contact.fullName;
     if (typeof contact === 'object' && contact?.name) return contact.name;
     return 'Unknown Contact';
   };
@@ -186,6 +185,18 @@ export default function DealDetail({
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+    });
+  };
+
+  const formatFullDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
     });
   };
 
@@ -253,7 +264,15 @@ export default function DealDetail({
 
         {/* ── Header ── */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-border shrink-0">
-          <h2 className="text-lg font-semibold text-foreground truncate pr-2">{deal.title || deal.dealName}</h2>
+          <div className="min-w-0 pr-2">
+            <h2 className="text-lg font-semibold text-foreground truncate">{deal.title || deal.dealName}</h2>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge variant={deal.stage}>{deal.stage}</Badge>
+              <span className="text-sm text-muted-foreground">
+                {getCurrencySymbol(deal.currency)}{(deal.value ?? deal.amount || 0).toLocaleString()}
+              </span>
+            </div>
+          </div>
           <button
             onClick={onClose}
             className="text-muted-foreground hover:text-foreground transition-colors shrink-0 rounded-md p-1 hover:bg-accent"
@@ -265,20 +284,16 @@ export default function DealDetail({
 
         {/* ── Scrollable content ── */}
         <div className="flex-1 overflow-y-auto min-h-0">
-          {/* Deal Details */}
+          {/* Deal Details - Compact */}
           <div className="border-b border-border">
-            <section className="p-4 sm:p-6 space-y-4">
-              <h3 className="font-medium text-foreground">Deal Overview</h3>
-              <div className="space-y-3 text-sm">
+            <section className="p-4 sm:p-5">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                 {details.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="flex flex-col gap-1 sm:flex-row sm:gap-0 items-start sm:items-center"
-                  >
-                    <span className="font-medium capitalize text-foreground sm:w-28 sm:shrink-0">
-                      {item.label}:
+                  <div key={idx} className="flex flex-col">
+                    <span className="font-medium capitalize text-muted-foreground text-xs">
+                      {item.label}
                     </span>
-                    <span className="flex items-center capitalize text-muted-foreground sm:ml-2">
+                    <span className="flex items-center capitalize text-foreground">
                       {item.value}
                     </span>
                   </div>
@@ -290,8 +305,8 @@ export default function DealDetail({
           {/* Deal Description */}
           {(deal as any).description && (
             <div className="border-b border-border">
-              <section className="p-4 sm:p-6">
-                <h3 className="font-medium text-foreground mb-2">Description</h3>
+              <section className="p-4 sm:p-5">
+                <h3 className="font-medium text-foreground mb-2 text-sm">Description</h3>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                   {(deal as any).description}
                 </p>
@@ -299,20 +314,20 @@ export default function DealDetail({
             </div>
           )}
 
-          {/* Notes & Activity Tabs */}
-          <div className="border-b border-border">
+          {/* Updates & Activity Tabs */}
+          <div>
             {/* Tab Header */}
             <div className="flex border-b border-border">
               <button
-                onClick={() => setActiveTab('notes')}
+                onClick={() => setActiveTab('updates')}
                 className={`flex items-center gap-2 px-4 sm:px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === 'notes'
+                  activeTab === 'updates'
                     ? 'border-foreground text-foreground'
                     : 'border-transparent text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <MessageSquare className="w-4 h-4" />
-                Notes
+                <RefreshCw className="w-4 h-4" />
+                Updates
                 {notes.length > 0 && (
                   <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-accent text-xs font-medium">
                     {notes.length}
@@ -332,18 +347,22 @@ export default function DealDetail({
               </button>
             </div>
 
-            {/* Notes Tab Content */}
-            {activeTab === 'notes' && (
-              <section className="p-4 sm:p-6">
-                {/* Add Note Form */}
-                <div className="mb-6">
+            {/* Updates Tab Content */}
+            {activeTab === 'updates' && (
+              <section className="p-4 sm:p-5">
+                {/* Add Update Form */}
+                <div className="mb-6 bg-muted/30 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <TrendingUp size={14} className="text-muted-foreground" />
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Add Update</span>
+                  </div>
                   <div className="flex gap-2">
                     <Textarea
-                      placeholder="Add a note..."
+                      placeholder="Write a deal update — what's happening, what changed, next steps..."
                       value={newNoteContent}
                       onChange={(e) => setNewNoteContent(e.target.value)}
-                      className="min-h-[44px] max-h-32 resize-none text-sm"
-                      rows={1}
+                      className="min-h-[60px] max-h-32 resize-none text-sm bg-background"
+                      rows={2}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                           e.preventDefault();
@@ -351,71 +370,98 @@ export default function DealDetail({
                         }
                       }}
                     />
+                  </div>
+                  <div className="flex items-center justify-between mt-2">
+                    <p className="text-xs text-muted-foreground">
+                      Ctrl+Enter to post
+                    </p>
                     <Button
                       onClick={handleAddNote}
                       disabled={!newNoteContent.trim() || submittingNote}
-                      className="shrink-0 px-3 py-2 text-sm font-medium rounded-lg border border-border hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                      size="sm"
+                      className="gap-1.5"
                     >
                       {submittingNote ? (
-                        <Loader className="animate-spin" size={16} />
+                        <Loader className="animate-spin" size={14} />
                       ) : (
-                        <Send size={16} />
+                        <Send size={14} />
                       )}
+                      Post Update
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Press Ctrl+Enter to send
-                  </p>
                 </div>
 
-                {/* Notes Timeline */}
+                {/* Updates Timeline */}
                 {notesLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader className="animate-spin text-muted-foreground" size={20} />
-                    <span className="ml-2 text-sm text-muted-foreground">Loading notes...</span>
+                    <span className="ml-2 text-sm text-muted-foreground">Loading updates...</span>
                   </div>
                 ) : notes.length === 0 ? (
                   <div className="text-center py-8">
-                    <MessageSquare className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">No notes yet</p>
-                    <p className="text-xs text-muted-foreground/70">Add a note to start the conversation</p>
+                    <RefreshCw className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No updates yet</p>
+                    <p className="text-xs text-muted-foreground/70">Post the first deal update above</p>
                   </div>
                 ) : (
                   <div className="space-y-0">
                     {notes.map((note, idx) => (
                       <div
                         key={note.id}
-                        className={`flex gap-3 ${idx !== notes.length - 1 ? 'pb-4 mb-4 border-b border-border/50' : ''}`}
+                        className={`relative ${idx !== notes.length - 1 ? 'pb-5' : ''}`}
                       >
-                        {/* Avatar */}
-                        <div className="shrink-0 mt-0.5">
-                          {note.user.image ? (
-                            <img
-                              src={note.user.image}
-                              alt={note.user.name || note.user.email}
-                              className="w-8 h-8 rounded-full object-cover"
-                            />
-                          ) : (
-                            <AvatarInitials
-                              name={note.user.name}
-                              email={note.user.email}
-                              size={32}
-                            />
-                          )}
-                        </div>
-                        {/* Content */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-baseline gap-2 flex-wrap">
-                            <span className="text-sm font-medium text-foreground">
-                              {note.user.name || note.user.email}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {formatRelativeTime(note.createdAt)}
-                            </span>
+                        {/* Timeline line */}
+                        {idx !== notes.length - 1 && (
+                          <div className="absolute left-[15px] top-[40px] bottom-0 w-px bg-border" />
+                        )}
+
+                        <div className="flex gap-3">
+                          {/* Avatar */}
+                          <div className="shrink-0 relative z-10">
+                            {note.user.image ? (
+                              <img
+                                src={note.user.image}
+                                alt={note.user.name || note.user.email}
+                                className="w-8 h-8 rounded-full object-cover ring-2 ring-background"
+                              />
+                            ) : (
+                              <AvatarInitials
+                                name={note.user.name}
+                                email={note.user.email}
+                                size={32}
+                              />
+                            )}
                           </div>
-                          <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words">
-                            {note.content}
-                          </p>
+
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="bg-muted/30 rounded-lg p-3">
+                              {/* Header: User + Date */}
+                              <div className="flex items-center justify-between gap-2 mb-1.5">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="text-sm font-semibold text-foreground truncate">
+                                    {note.user.name || note.user.email}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <Clock size={10} className="text-muted-foreground/50" />
+                                  <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                                    {formatRelativeTime(note.createdAt)}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Full date */}
+                              <div className="text-[10px] text-muted-foreground/60 mb-2">
+                                {formatFullDate(note.createdAt)}
+                              </div>
+
+                              {/* Update content */}
+                              <p className="text-sm text-foreground whitespace-pre-wrap break-words leading-relaxed">
+                                {note.content}
+                              </p>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -426,7 +472,7 @@ export default function DealDetail({
 
             {/* Activity Tab Content */}
             {activeTab === 'activity' && (
-              <section className="p-4 sm:p-6">
+              <section className="p-4 sm:p-5">
                 {activityLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader className="animate-spin text-muted-foreground" size={20} />

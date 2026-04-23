@@ -100,6 +100,22 @@ export async function POST(
       },
     })
 
+    // Create notification for deal owner if different from note author
+    if (deal.ownerId !== userId) {
+      await db.notification.create({
+        data: {
+          type: "deal_note",
+          title: `New note on "${deal.title}"`,
+          message: content.length > 100 ? content.substring(0, 100) + "..." : content,
+          entityId: dealId,
+          entityType: "deal",
+          spaceId: deal.spaceId,
+          userId: deal.ownerId,
+          createdById: userId,
+        },
+      })
+    }
+
     return NextResponse.json(note, { status: 201 })
   } catch (error) {
     console.error("Deal Notes POST:", error)

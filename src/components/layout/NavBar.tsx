@@ -5,6 +5,7 @@ import { signOut, useSession } from "next-auth/react"
 import { useCurrentPage } from "@/app/page"
 import { Bell, MessageSquare, Phone, Search, LogOut, User, Briefcase, Menu, MoreVertical } from "lucide-react"
 import { navigateTo } from "@/app/page"
+import NotificationPanel, { useNotificationCount } from "@/components/NotificationPanel"
 
 const pageDescriptions: Record<string, { title: string; description: string }> = {
   dashboard: { title: "Dashboard", description: "Your leads. Your tasks. Your momentum — in one view." },
@@ -24,10 +25,13 @@ const pageDescriptions: Record<string, { title: string; description: string }> =
 export default function NavBar({ onToggleVoIP, onlineCount, setMobileMenuOpen }: { onToggleVoIP?: () => void; onlineCount?: number; setMobileMenuOpen?: (open: boolean) => void }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isOverflowOpen, setIsOverflowOpen] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const overflowRef = useRef<HTMLDivElement>(null)
+  const bellRef = useRef<HTMLButtonElement>(null)
   const page = useCurrentPage()
   const { data: session } = useSession()
+  const unreadCount = useNotificationCount()
 
   const pageInfo = pageDescriptions[page] || pageDescriptions.dashboard
 
@@ -118,9 +122,25 @@ export default function NavBar({ onToggleVoIP, onlineCount, setMobileMenuOpen }:
         <div className="h-6 w-px bg-border"></div>
 
         {/* Notification */}
-        <button className="p-2 rounded-lg hover:bg-accent transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center">
-          <Bell size={18} className="text-muted-foreground" />
-        </button>
+        <div className="relative">
+          <button
+            ref={bellRef}
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="p-2 rounded-lg hover:bg-accent transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center relative"
+          >
+            <Bell size={18} className="text-muted-foreground" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
+          </button>
+          <NotificationPanel
+            open={showNotifications}
+            onClose={() => setShowNotifications(false)}
+            anchorRef={bellRef}
+          />
+        </div>
 
         {/* Profile dropdown */}
         <div className="flex items-center gap-2 relative" ref={dropdownRef}>

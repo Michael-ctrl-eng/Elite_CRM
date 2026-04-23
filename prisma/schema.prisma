@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -12,10 +12,10 @@ datasource db {
 model Space {
   id          String   @id @default(cuid())
   name        String
-  slug        String   @unique
-  description String?
-  logo        String?
-  industry    String?
+  slug        String   @unique @db.VarChar(100)
+  description String?  @db.Text
+  logo        String?  @db.Text
+  industry    String?  @db.VarChar(100)
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -34,9 +34,9 @@ model Space {
 
 model SpaceMember {
   id       String   @id @default(cuid())
-  userId   String
-  spaceId  String
-  role     String   @default("viewer") // admin | manager | viewer
+  userId   String   @db.VarChar(30)
+  spaceId  String   @db.VarChar(30)
+  role     String   @default("viewer") @db.VarChar(20) // admin | manager | viewer
   joinedAt DateTime @default(now())
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -48,16 +48,16 @@ model SpaceMember {
 // ─── USER ───
 
 model User {
-  id                String  @id @default(cuid())
-  email             String  @unique
-  name              String?
-  password          String?
-  image             String?
-  status            String  @default("Inactive") // Active | Inactive | Invite | Deleted
-  globalRole        String  @default("viewer")   // superadmin | admin | manager | viewer
-  isDemo            Boolean @default(false)
+  id                String   @id @default(cuid()) @db.VarChar(30)
+  email             String   @unique @db.VarChar(255)
+  name              String?  @db.VarChar(255)
+  password          String?  @db.VarChar(255)
+  image             String?  @db.Text
+  status            String   @default("Inactive") @db.VarChar(20) // Active | Inactive | Invite | Deleted
+  globalRole        String   @default("viewer") @db.VarChar(20)   // superadmin | admin | manager | viewer
+  isDemo            Boolean  @default(false)
   lastSeen          DateTime @default(now())
-  verificationToken String?
+  verificationToken String?  @db.VarChar(255)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -79,18 +79,18 @@ model User {
 // ─── NEXTAUTH MODELS ───
 
 model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String?
-  access_token      String?
+  id                String  @id @default(cuid()) @db.VarChar(30)
+  userId            String  @db.VarChar(30)
+  type              String  @db.VarChar(50)
+  provider          String  @db.VarChar(50)
+  providerAccountId String  @db.VarChar(100)
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
   expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String?
-  session_state     String?
+  token_type        String? @db.VarChar(50)
+  scope             String? @db.Text
+  id_token          String? @db.Text
+  session_state     String? @db.VarChar(100)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -98,17 +98,17 @@ model Account {
 }
 
 model Session {
-  id           String  @id @default(cuid())
-  sessionToken String  @unique
-  userId       String
+  id           String   @id @default(cuid()) @db.VarChar(30)
+  sessionToken String   @unique @db.VarChar(255)
+  userId       String   @db.VarChar(30)
   expires      DateTime
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
-  identifier String
-  token      String   @unique
+  identifier String   @db.VarChar(255)
+  token      String   @unique @db.VarChar(255)
   expires    DateTime
 
   @@unique([identifier, token])
@@ -117,22 +117,22 @@ model VerificationToken {
 // ─── DEAL ───
 
 model Deal {
-  id          String   @id @default(cuid())
-  title       String
+  id          String    @id @default(cuid()) @db.VarChar(30)
+  title       String    @db.VarChar(255)
   value       Float?
-  currency    String   @default("USD")
-  stage       String   @default("New")
+  currency    String    @default("USD") @db.VarChar(10)
+  stage       String    @default("New") @db.VarChar(50)
   probability Int?
   closeDate   DateTime?
-  description String?
-  tags        String?
-  source      String?
-  contactId   String?
-  companyId   String?
-  spaceId     String
-  ownerId     String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  description String?   @db.Text
+  tags        String?   @db.Text
+  source      String?   @db.VarChar(100)
+  contactId   String?   @db.VarChar(30)
+  companyId   String?   @db.VarChar(30)
+  spaceId     String    @db.VarChar(30)
+  ownerId     String    @db.VarChar(30)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   space   Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   owner   User     @relation(fields: [ownerId], references: [id])
@@ -143,17 +143,17 @@ model Deal {
 // ─── TODO ───
 
 model Todo {
-  id           String   @id @default(cuid())
-  title        String
-  description  String?
-  status       String   @default("Todo")
-  priority     String   @default("Medium")
+  id           String   @id @default(cuid()) @db.VarChar(30)
+  title        String   @db.VarChar(255)
+  description  String?  @db.Text
+  status       String   @default("Todo") @db.VarChar(30)
+  priority     String   @default("Medium") @db.VarChar(20)
   dueDate      DateTime?
-  tags         String?
-  linkedTo     String?
-  assignedToId String?
-  spaceId      String
-  ownerId      String
+  tags         String?  @db.Text
+  linkedTo     String?  @db.VarChar(100)
+  assignedToId String?  @db.VarChar(30)
+  spaceId      String   @db.VarChar(30)
+  ownerId      String   @db.VarChar(30)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -165,19 +165,19 @@ model Todo {
 // ─── MEETING ───
 
 model Meeting {
-  id           String   @id @default(cuid())
-  title        String
-  description  String?
-  location     String?
-  status       String   @default("Scheduled")
+  id           String   @id @default(cuid()) @db.VarChar(30)
+  title        String   @db.VarChar(255)
+  description  String?  @db.Text
+  location     String?  @db.VarChar(255)
+  status       String   @default("Scheduled") @db.VarChar(30)
   startDate    DateTime
   endDate      DateTime?
-  recurrence   String?
-  tags         String?
-  linkedTo     String?
-  assignedToId String?
-  spaceId      String
-  ownerId      String
+  recurrence   String?  @db.VarChar(50)
+  tags         String?  @db.Text
+  linkedTo     String?  @db.VarChar(100)
+  assignedToId String?  @db.VarChar(30)
+  spaceId      String   @db.VarChar(30)
+  ownerId      String   @db.VarChar(30)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -189,20 +189,20 @@ model Meeting {
 // ─── PROSPECT ───
 
 model Prospect {
-  id        String   @id @default(cuid())
-  name      String
-  email     String?
-  phone     String?
-  company   String?
-  position  String?
-  source    String?
-  status    String   @default("New")
+  id        String   @id @default(cuid()) @db.VarChar(30)
+  name      String   @db.VarChar(255)
+  email     String?  @db.VarChar(255)
+  phone     String?  @db.VarChar(50)
+  company   String?  @db.VarChar(255)
+  position  String?  @db.VarChar(100)
+  source    String?  @db.VarChar(100)
+  status    String   @default("New") @db.VarChar(30)
   value     Float?
-  notes     String?
-  tags      String?
-  companyId String?
-  spaceId   String
-  ownerId   String
+  notes     String?  @db.Text
+  tags      String?  @db.Text
+  companyId String?  @db.VarChar(30)
+  spaceId   String   @db.VarChar(30)
+  ownerId   String   @db.VarChar(30)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -214,20 +214,20 @@ model Prospect {
 // ─── CUSTOMER ───
 
 model Customer {
-  id        String   @id @default(cuid())
-  name      String
-  email     String?
-  phone     String?
-  company   String?
-  position  String?
-  status    String   @default("Active")
+  id        String   @id @default(cuid()) @db.VarChar(30)
+  name      String   @db.VarChar(255)
+  email     String?  @db.VarChar(255)
+  phone     String?  @db.VarChar(50)
+  company   String?  @db.VarChar(255)
+  position  String?  @db.VarChar(100)
+  status    String   @default("Active") @db.VarChar(30)
   value     Float?
-  notes     String?
-  tags      String?
-  address   String?
-  companyId String?
-  spaceId   String
-  ownerId   String
+  notes     String?  @db.Text
+  tags      String?  @db.Text
+  address   String?  @db.Text
+  companyId String?  @db.VarChar(30)
+  spaceId   String   @db.VarChar(30)
+  ownerId   String   @db.VarChar(30)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -240,18 +240,18 @@ model Customer {
 // ─── COMPANY ───
 
 model Company {
-  id        String   @id @default(cuid())
-  name      String
-  email     String?
-  phone     String?
-  website   String?
-  industry  String?
-  status    String   @default("Active")
-  notes     String?
-  tags      String?
-  address   String?
-  spaceId   String
-  ownerId   String
+  id        String   @id @default(cuid()) @db.VarChar(30)
+  name      String   @db.VarChar(255)
+  email     String?  @db.VarChar(255)
+  phone     String?  @db.VarChar(50)
+  website   String?  @db.VarChar(255)
+  industry  String?  @db.VarChar(100)
+  status    String   @default("Active") @db.VarChar(30)
+  notes     String?  @db.Text
+  tags      String?  @db.Text
+  address   String?  @db.Text
+  spaceId   String   @db.VarChar(30)
+  ownerId   String   @db.VarChar(30)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -265,16 +265,16 @@ model Company {
 // ─── ACTIVITY LOG ───
 
 model ActivityLog {
-  id             String   @id @default(cuid())
-  action         String
-  entity         String
-  entityId       String?
-  details        String?
-  changedFields  String?
-  previousValues String?
-  newValues      String?
-  spaceId        String
-  userId         String
+  id             String   @id @default(cuid()) @db.VarChar(30)
+  action         String   @db.VarChar(30)
+  entity         String   @db.VarChar(50)
+  entityId       String?  @db.VarChar(30)
+  details        String?  @db.Text
+  changedFields  String?  @db.Text
+  previousValues String?  @db.Text
+  newValues      String?  @db.Text
+  spaceId        String   @db.VarChar(30)
+  userId         String   @db.VarChar(30)
   createdAt      DateTime @default(now())
 
   space Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
@@ -284,14 +284,14 @@ model ActivityLog {
 // ─── EMAIL SETTINGS ───
 
 model EmailSettings {
-  id        String  @id @default(cuid())
-  host      String
-  port      Int     @default(465)
-  secure    Boolean @default(true)
-  sender    String
-  user      String
-  pass      String
-  userId    String  @unique
+  id        String   @id @default(cuid()) @db.VarChar(30)
+  host      String   @db.VarChar(255)
+  port      Int      @default(465)
+  secure    Boolean  @default(true)
+  sender    String   @db.VarChar(255)
+  user      String   @db.VarChar(255)
+  pass      String   @db.VarChar(255)
+  userId    String   @unique @db.VarChar(30)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

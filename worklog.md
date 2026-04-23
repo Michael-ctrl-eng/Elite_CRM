@@ -86,3 +86,27 @@ Stage Summary:
 - Auto-polling: 60s in NotificationPanel, 120s global check in AppContent
 - Delete and mark-all-read functionality wired to backend APIs
 - Zero new lint errors
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Enhanced DealDetail with Updates section, final commit and push
+
+Work Log:
+- Rewrote DealDetail.tsx with prominent "Updates" tab as the primary section
+- Updates tab renamed from "Notes" — shows deal progress updates with timeline UI
+- Each update shows: user avatar, username, full date + relative time, and content in a card
+- Timeline connector lines between updates for visual flow
+- "Add Update" form with placeholder text about deal updates
+- Compact deal overview with 2-column grid layout
+- Deal header now shows title, stage badge, and amount inline
+- Ran build check — zero errors, all 34 routes compiled
+- Committed with descriptive message and pushed to GitHub
+
+Stage Summary:
+- DealDetail now has prominent "Updates" section with timeline UI showing user + date
+- Notification system complete: backend (4 API routes) + frontend (bell dropdown + unread badge)
+- Meeting reminders trigger 15 minutes before start
+- Task reminders trigger based on reminderMinutes field
+- Deal note creation sends notification to deal owner
+- Zero build errors, pushed to GitHub successfully

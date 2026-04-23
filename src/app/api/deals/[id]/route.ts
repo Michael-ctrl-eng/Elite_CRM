@@ -11,7 +11,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const deal = await db.deal.findUnique({
       where: { id },
-      include: { owner: { select: { id: true, name: true, email: true, image: true } }, contact: true, company: true }
+      include: {
+        owner: { select: { id: true, name: true, email: true, image: true } },
+        contact: true,
+        company: true,
+        dealNotes: {
+          include: {
+            user: { select: { id: true, name: true, email: true, image: true } },
+          },
+          orderBy: { createdAt: "desc" },
+        },
+      },
     })
     if (!deal) return NextResponse.json({ error: "Not found" }, { status: 404 })
 

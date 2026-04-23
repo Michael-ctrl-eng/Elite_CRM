@@ -28,6 +28,7 @@ model Space {
   customers    Customer[]
   companies    Company[]
   activityLogs ActivityLog[]
+  invitations  Invitation[]
 }
 
 // ─── SPACE MEMBERSHIP ───
@@ -63,6 +64,7 @@ model User {
 
   spaceMemberships SpaceMember[]
   ownedDeals       Deal[]
+  dealNotes        DealNote[]
   ownedTodos       Todo[]
   ownedMeetings    Meeting[]
   ownedProspects   Prospect[]
@@ -139,6 +141,21 @@ model Deal {
   owner   User     @relation(fields: [ownerId], references: [id])
   contact Customer? @relation(fields: [contactId], references: [id])
   company Company?  @relation(fields: [companyId], references: [id])
+  dealNotes DealNote[]
+}
+
+// ─── DEAL NOTE ───
+
+model DealNote {
+  id        String   @id @default(cuid()) @db.VarChar(30)
+  content   String   @db.Text
+  dealId    String   @db.VarChar(30)
+  userId    String   @db.VarChar(30)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  deal Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
 }
 
 // ─── TODO ───
@@ -299,4 +316,21 @@ model EmailSettings {
   updatedAt DateTime @updatedAt
 
   userRel User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── INVITATION ───
+
+model Invitation {
+  id        String   @id @default(cuid()) @db.VarChar(30)
+  email     String   @db.VarChar(255)
+  token     String   @unique @db.VarChar(255)
+  role      String   @default("viewer") @db.VarChar(20)
+  status    String   @default("pending") @db.VarChar(20) // pending | accepted | expired
+  expiresAt DateTime
+  invitedBy String   @db.VarChar(30)
+  spaceId   String   @db.VarChar(30)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  space Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
 }

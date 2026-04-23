@@ -1,6 +1,7 @@
 "use client"
 import { useState, useEffect } from "react"
 import { useCurrentSpace } from "@/app/page"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -12,10 +13,12 @@ import { Plus, Search, Trash2, Edit2 } from "lucide-react"
 const STATUSES = ["Todo", "InProgress", "OnHold", "Done"]
 const PRIORITIES = ["Low", "Medium", "High", "Urgent"]
 const statusColors: Record<string, string> = { Todo: "bg-gray-500", InProgress: "bg-blue-500", OnHold: "bg-amber-500", Done: "bg-green-500" }
+const statusLabels: Record<string, string> = { Todo: "To Do", InProgress: "In Progress", OnHold: "On Hold", Done: "Done" }
 const priorityColors: Record<string, string> = { Low: "secondary", Medium: "outline", High: "default", Urgent: "destructive" }
 
 export default function TodosPage() {
   const spaceId = useCurrentSpace()
+  const isMobile = useIsMobile()
   const [todos, setTodos] = useState<any[]>([])
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
@@ -36,58 +39,102 @@ export default function TodosPage() {
   const filtered = todos.filter(t => (statusFilter === "all" || t.status === statusFilter) && (!search || t.title.toLowerCase().includes(search.toLowerCase())))
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="relative"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Search todos..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 w-64" /></div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="w-36"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All Status</SelectItem>{STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+          <div className="relative flex-1 sm:flex-none"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Search todos..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 w-full sm:w-64 min-h-[44px]" /></div>
+          {/* Desktop-only filter select */}
+          {!isMobile && (
+            <Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="w-36 min-h-[36px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All Status</SelectItem>{STATUSES.map(s => <SelectItem key={s} value={s}>{statusLabels[s]}</SelectItem>)}</SelectContent></Select>
+          )}
         </div>
-        <Dialog open={showCreate} onOpenChange={setShowCreate}><DialogTrigger asChild><Button><Plus size={14} /> Add Task</Button></DialogTrigger>
+        <Dialog open={showCreate} onOpenChange={setShowCreate}><DialogTrigger asChild><Button className="min-h-[44px] w-full sm:w-auto"><Plus size={14} /> Add Task</Button></DialogTrigger>
           <DialogContent><DialogHeader><DialogTitle>Create Task</DialogTitle></DialogHeader><div className="space-y-3">
-            <Input placeholder="Task Title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
-            <Input placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
-            <div className="grid grid-cols-2 gap-3">
-              <Select value={form.status} onValueChange={v => setForm({ ...form, status: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>
-              <Select value={form.priority} onValueChange={v => setForm({ ...form, priority: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select>
+            <Input placeholder="Task Title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="min-h-[44px]" />
+            <Input placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="min-h-[44px]" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Select value={form.status} onValueChange={v => setForm({ ...form, status: v })}><SelectTrigger className="min-h-[44px]"><SelectValue /></SelectTrigger><SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{statusLabels[s]}</SelectItem>)}</SelectContent></Select>
+              <Select value={form.priority} onValueChange={v => setForm({ ...form, priority: v })}><SelectTrigger className="min-h-[44px]"><SelectValue /></SelectTrigger><SelectContent>{PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select>
             </div>
-            <Input type="date" value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })} />
-            <Button onClick={handleCreate} className="w-full" disabled={!form.title}>Create Task</Button>
+            <Input type="date" value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })} className="min-h-[44px]" />
+            <Button onClick={handleCreate} className="w-full min-h-[44px]" disabled={!form.title}>Create Task</Button>
           </div></DialogContent>
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {STATUSES.map(status => (
-          <div key={status}>
-            <div className="flex items-center gap-2 mb-3"><div className={`w-2 h-2 rounded-full ${statusColors[status]}`} /><span className="font-medium text-sm">{status}</span><Badge variant="secondary" className="ml-auto text-xs">{filtered.filter(t => t.status === status).length}</Badge></div>
-            <div className="space-y-2">
-              {filtered.filter(t => t.status === status).map(todo => (
-                <Card key={todo.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setEditTodo(todo)}>
-                  <CardContent className="p-3">
-                    <p className="text-sm font-medium">{todo.title}</p>
-                    {todo.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{todo.description}</p>}
-                    <div className="flex items-center justify-between mt-2">
-                      <Badge variant={priorityColors[todo.priority] as any} className="text-xs">{todo.priority}</Badge>
-                      {todo.dueDate && <span className="text-xs text-muted-foreground">{new Date(todo.dueDate).toLocaleDateString()}</span>}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">{todo.assignedTo?.name || todo.owner?.name}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+      {/* Mobile: Swipeable status filter tabs */}
+      {isMobile && (
+        <div className="-mx-4 px-4">
+          <div
+            className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4"
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          >
+            <button
+              onClick={() => setStatusFilter("all")}
+              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium min-h-[44px] transition-colors ${
+                statusFilter === "all" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+              }`}
+            >
+              All
+            </button>
+            {STATUSES.map(status => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium min-h-[44px] transition-colors flex items-center gap-1.5 ${
+                  statusFilter === status ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${statusColors[status]}`} />
+                {statusLabels[status]}
+              </button>
+            ))}
           </div>
-        ))}
+        </div>
+      )}
+
+      {/* Board View */}
+      <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 min-w-[300px] sm:min-w-0">
+          {STATUSES.map(status => {
+            const statusTodos = filtered.filter(t => t.status === status)
+            return (
+              <div key={status}>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className={`w-2 h-2 rounded-full ${statusColors[status]}`} />
+                  <span className="font-medium text-sm">{statusLabels[status]}</span>
+                  <Badge variant="secondary" className="ml-auto text-xs">{statusTodos.length}</Badge>
+                </div>
+                <div className="space-y-2">
+                  {statusTodos.map(todo => (
+                    <Card key={todo.id} className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98]" onClick={() => setEditTodo(todo)}>
+                      <CardContent className="p-3 sm:p-3">
+                        <p className="text-sm font-medium">{todo.title}</p>
+                        {todo.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{todo.description}</p>}
+                        <div className="flex items-center justify-between mt-2">
+                          <Badge variant={priorityColors[todo.priority] as any} className="text-xs">{todo.priority}</Badge>
+                          {todo.dueDate && <span className="text-xs text-muted-foreground">{new Date(todo.dueDate).toLocaleDateString()}</span>}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">{todo.assignedTo?.name || todo.owner?.name}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </div>
 
       <Dialog open={!!editTodo} onOpenChange={() => setEditTodo(null)}><DialogContent><DialogHeader><DialogTitle>Edit Task</DialogTitle></DialogHeader>
         {editTodo && <div className="space-y-3">
-          <Input value={editTodo.title} onChange={e => setEditTodo({ ...editTodo, title: e.target.value })} />
-          <Input value={editTodo.description || ""} onChange={e => setEditTodo({ ...editTodo, description: e.target.value })} placeholder="Description" />
-          <div className="grid grid-cols-2 gap-3">
-            <Select value={editTodo.status} onValueChange={v => setEditTodo({ ...editTodo, status: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>
-            <Select value={editTodo.priority} onValueChange={v => setEditTodo({ ...editTodo, priority: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select>
+          <Input value={editTodo.title} onChange={e => setEditTodo({ ...editTodo, title: e.target.value })} className="min-h-[44px]" />
+          <Input value={editTodo.description || ""} onChange={e => setEditTodo({ ...editTodo, description: e.target.value })} placeholder="Description" className="min-h-[44px]" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Select value={editTodo.status} onValueChange={v => setEditTodo({ ...editTodo, status: v })}><SelectTrigger className="min-h-[44px]"><SelectValue /></SelectTrigger><SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{statusLabels[s]}</SelectItem>)}</SelectContent></Select>
+            <Select value={editTodo.priority} onValueChange={v => setEditTodo({ ...editTodo, priority: v })}><SelectTrigger className="min-h-[44px]"><SelectValue /></SelectTrigger><SelectContent>{PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select>
           </div>
-          <div className="flex gap-2"><Button onClick={() => handleUpdate(editTodo.id, editTodo)} className="flex-1">Save</Button><Button variant="destructive" onClick={() => { handleDelete(editTodo.id); setEditTodo(null) }}><Trash2 size={14} /></Button></div>
+          <div className="flex gap-2"><Button onClick={() => handleUpdate(editTodo.id, editTodo)} className="flex-1 min-h-[44px]">Save</Button><Button variant="destructive" onClick={() => { handleDelete(editTodo.id); setEditTodo(null) }} className="min-h-[44px] min-w-[44px]"><Trash2 size={14} /></Button></div>
         </div>}
       </DialogContent></Dialog>
     </div>

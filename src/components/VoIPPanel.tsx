@@ -3,15 +3,41 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
-import { Phone, PhoneOff, Mic, MicOff, Volume2, VolumeX, X } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Badge } from "@/components/ui/badge"
+import {
+  Phone,
+  PhoneOff,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX,
+  X,
+  Search,
+  Building2,
+  User,
+  PhoneCall,
+} from "lucide-react"
 import { io, Socket } from "socket.io-client"
+import { useCurrentSpace } from "@/app/page"
 
 interface VoIPPanelProps {
   onClose: () => void
 }
 
+interface ContactItem {
+  id: string
+  name: string
+  phone: string | null
+  email: string | null
+  type: "customer" | "company"
+}
+
 export default function VoIPPanel({ onClose }: VoIPPanelProps) {
   const { data: session } = useSession()
+  const spaceId = useCurrentSpace()
   const [onlineUsers, setOnlineUsers] = useState<any[]>([])
   const [socket, setSocket] = useState<Socket | null>(null)
   const [callState, setCallState] = useState<"idle" | "calling" | "ringing" | "connected">("idle")
@@ -19,6 +45,15 @@ export default function VoIPPanel({ onClose }: VoIPPanelProps) {
   const [isMuted, setIsMuted] = useState(false)
   const [isDeafened, setIsDeafened] = useState(false)
   const [callDuration, setCallDuration] = useState(0)
+
+  // Contacts state
+  const [contacts, setContacts] = useState<{
+    customers: ContactItem[]
+    companies: ContactItem[]
+  }>({ customers: [], companies: [] })
+  const [contactsLoading, setContactsLoading] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [activeTab, setActiveTab] = useState("online")
 
   const localStreamRef = useRef<MediaStream | null>(null)
   const remoteStreamRef = useRef<MediaStream | null>(null)
@@ -37,7 +72,7 @@ export default function VoIPPanel({ onClose }: VoIPPanelProps) {
   const startCallTimer = useCallback(() => {
     setCallDuration(0)
     if (callTimerRef.current) clearInterval(callTimerRef.current)
-    callTimerRef.current = setInterval(() => setCallDuration(d => d + 1), 1000)
+    callTimerRef.current = setInterval(() => setCallDuration((d) => d + 1), 1000)
   }, [])
 
   const stopCallTimer = useCallback(() => {
@@ -55,7 +90,7 @@ export default function VoIPPanel({ onClose }: VoIPPanelProps) {
       sock.emit("hang-up", { targetUserId: targetId, callId: call.callId })
     }
 
-    localStreamRef.current?.getTracks().forEach(t => t.stop())
+    localStreamRef.current?.getTracks().forEach((t) => t.stop())
     peerConnectionRef.current?.close()
     peerConnectionRef.current = null
     localStreamRef.current = null
@@ -84,12 +119,34 @@ export default function VoIPPanel({ onClose }: VoIPPanelProps) {
           const users = await res.json()
           setOnlineUsers(users.filter((u: any) => u.id !== (session?.user as any)?.id))
         }
-      } catch (e) {}
+      } catch (e) {
+        /* ignore */
+      }
     }
     fetchOnline()
     const interval = setInterval(fetchOnline, 10000)
     return () => clearInterval(interval)
   }, [session])
+
+  // Fetch contacts
+  useEffect(() => {
+    const fetchContacts = async () => {
+      if (!spaceId) return
+      setContactsLoading(true)
+      try {
+        const res = await fetch(`/api/voip/contacts?spaceId=${encodeURIComponent(spaceId)}`)
+        if (res.ok) {
+          const data = await res.json()
+          setContacts(data)
+        }
+      } catch (e) {
+        console.error("Failed to fetch VoIP contacts:", e)
+      } finally {
+        setContactsLoading(false)
+      }
+    }
+    fetchContacts()
+  }, [spaceId])
 
   // Connect to socket for VoIP signaling
   useEffect(() => {
@@ -119,7 +176,9 @@ export default function VoIPPanel({ onClose }: VoIPPanelProps) {
           await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data.answer))
           setCallState("connected")
           startCallTimer()
-        } catch (e) { console.error("Set remote answer error:", e) }
+        } catch (e) {
+          console.error("Set remote answer error:", e)
+        }
       }
     })
 
@@ -128,7 +187,9 @@ export default function VoIPPanel({ onClose }: VoIPPanelProps) {
       if (peerConnectionRef.current && data.candidate) {
         try {
           await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(data.candidate))
-        } catch (e) { console.error("Add ICE candidate error:", e) }
+        } catch (e) {
+          console.error("Add ICE candidate error:", e)
+        }
       }
     })
 
@@ -138,7 +199,9 @@ export default function VoIPPanel({ onClose }: VoIPPanelProps) {
     })
 
     setSocket(newSocket)
-    return () => { newSocket.close() }
+    return () => {
+      newSocket.close()
+    }
   }, [session, startCallTimer, endCall])
 
   const createPeerConnection = useCallback(() => {
@@ -146,7 +209,7 @@ export default function VoIPPanel({ onClose }: VoIPPanelProps) {
       iceServers: [
         { urls: "stun:stun.l.google.com:19302" },
         { urls: "stun:stun1.l.google.com:19302" },
-      ]
+      ],
     }
     const pc = new RTCPeerConnection(config)
 
@@ -182,7 +245,7 @@ export default function VoIPPanel({ onClose }: VoIPPanelProps) {
       localStreamRef.current = stream
 
       const pc = createPeerConnection()
-      stream.getTracks().forEach(track => pc.addTrack(track, stream))
+      stream.getTracks().forEach((track) => pc.addTrack(track, stream))
 
       const offer = await pc.createOffer()
       await pc.setLocalDescription(offer)
@@ -205,7 +268,7 @@ export default function VoIPPanel({ onClose }: VoIPPanelProps) {
       localStreamRef.current = stream
 
       const pc = createPeerConnection()
-      stream.getTracks().forEach(track => pc.addTrack(track, stream))
+      stream.getTracks().forEach((track) => pc.addTrack(track, stream))
 
       await pc.setRemoteDescription(new RTCSessionDescription(currentCall.offer))
       const answer = await pc.createAnswer()
@@ -227,7 +290,9 @@ export default function VoIPPanel({ onClose }: VoIPPanelProps) {
 
   const toggleMute = () => {
     if (localStreamRef.current) {
-      localStreamRef.current.getAudioTracks().forEach(t => { t.enabled = isMuted })
+      localStreamRef.current.getAudioTracks().forEach((t) => {
+        t.enabled = isMuted
+      })
       setIsMuted(!isMuted)
     }
   }
@@ -239,14 +304,33 @@ export default function VoIPPanel({ onClose }: VoIPPanelProps) {
     }
   }
 
+  // Filter contacts based on search query
+  const filteredCustomers = contacts.customers.filter((c) =>
+    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (c.phone && c.phone.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (c.email && c.email.toLowerCase().includes(searchQuery.toLowerCase()))
+  )
+
+  const filteredCompanies = contacts.companies.filter((c) =>
+    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (c.phone && c.phone.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (c.email && c.email.toLowerCase().includes(searchQuery.toLowerCase()))
+  )
+
+  const totalContacts = filteredCustomers.length + filteredCompanies.length
+
   return (
-    <div className="w-80 border-l border-border bg-card flex flex-col h-full">
+    <div className="w-72 sm:w-80 border-l border-border bg-card flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border">
-        <h3 className="font-semibold text-foreground flex items-center gap-2">
+      <div className="flex items-center justify-between p-3 sm:p-4 border-b border-border">
+        <h3 className="font-semibold text-foreground flex items-center gap-2 text-sm sm:text-base">
           <Phone size={16} /> VoIP
         </h3>
-        <button onClick={onClose} className="p-1 rounded hover:bg-accent">
+        <button
+          onClick={onClose}
+          className="p-1 rounded hover:bg-accent transition-colors"
+          aria-label="Close VoIP panel"
+        >
           <X size={16} className="text-muted-foreground" />
         </button>
       </div>
@@ -255,12 +339,12 @@ export default function VoIPPanel({ onClose }: VoIPPanelProps) {
 
       {/* Active Call */}
       {callState !== "idle" && (
-        <div className="p-4 border-b border-border bg-primary/5">
+        <div className="p-3 sm:p-4 border-b border-border bg-primary/5">
           <div className="text-center mb-3">
             <div className="w-12 h-12 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-2">
               <Phone size={20} className="text-primary" />
             </div>
-            <p className="font-medium text-foreground">
+            <p className="font-medium text-foreground text-sm sm:text-base">
               {callState === "calling" && `Calling ${currentCall?.toUserName}...`}
               {callState === "ringing" && `Incoming from ${currentCall?.fromUserName}`}
               {callState === "connected" && `In call with ${currentCall?.toUserName || currentCall?.fromUserName}`}
@@ -293,35 +377,199 @@ export default function VoIPPanel({ onClose }: VoIPPanelProps) {
         </div>
       )}
 
-      {/* Online Users */}
-      <div className="flex-1 overflow-y-auto p-4">
-        <p className="text-sm font-medium text-muted-foreground mb-3">Online Users ({onlineUsers.length})</p>
-        <div className="space-y-2">
-          {onlineUsers.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-8">No other users online</p>
-          )}
-          {onlineUsers.map((user: any) => (
-            <div key={user.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/50 transition-colors">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-foreground flex items-center justify-center">
-                  <span className="text-background text-xs font-bold">{(user.name || "U").charAt(0).toUpperCase()}</span>
+      {/* Tabs */}
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="flex flex-col flex-1 min-h-0"
+      >
+        <div className="px-3 pt-3">
+          <TabsList className="w-full">
+            <TabsTrigger value="online" className="flex-1 text-xs sm:text-sm">
+              <User size={14} />
+              Online ({onlineUsers.length})
+            </TabsTrigger>
+            <TabsTrigger value="contacts" className="flex-1 text-xs sm:text-sm">
+              <PhoneCall size={14} />
+              Contacts
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        {/* Online Users Tab */}
+        <TabsContent value="online" className="flex-1 min-h-0 mt-0">
+          <ScrollArea className="h-full">
+            <div className="p-3 sm:p-4 space-y-2">
+              {onlineUsers.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No other users online
+                </p>
+              )}
+              {onlineUsers.map((user: any) => (
+                <div
+                  key={user.id}
+                  className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/50 transition-colors"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-foreground flex items-center justify-center shrink-0">
+                      <span className="text-background text-xs font-bold">
+                        {(user.name || "U").charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {user.name || user.email}
+                      </p>
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 rounded-full bg-green-500 shrink-0"></div>
+                        <span className="text-xs text-muted-foreground">Online</span>
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => startCall(user.id, user.name || user.email)}
+                    disabled={callState !== "idle"}
+                    className="shrink-0"
+                    aria-label={`Call ${user.name || user.email}`}
+                  >
+                    <Phone size={12} />
+                  </Button>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-foreground">{user.name || user.email}</p>
-                  <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                    <span className="text-xs text-muted-foreground">Online</span>
+              ))}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+
+        {/* Contacts Tab */}
+        <TabsContent value="contacts" className="flex-1 min-h-0 mt-0 flex flex-col">
+          {/* Search */}
+          <div className="px-3 pt-3 pb-2">
+            <div className="relative">
+              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search contacts..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 h-8 text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Contact List */}
+          <ScrollArea className="flex-1">
+            <div className="px-3 pb-3">
+              {contactsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-foreground/30 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-foreground/30 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
+                    <div className="w-2 h-2 bg-foreground/30 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
                   </div>
                 </div>
-              </div>
-              <Button size="sm" variant="outline" onClick={() => startCall(user.id, user.name || user.email)}
-                disabled={callState !== "idle"}>
-                <Phone size={12} />
-              </Button>
+              ) : totalContacts === 0 ? (
+                <div className="text-center py-8">
+                  <PhoneCall size={24} className="mx-auto text-muted-foreground/50 mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    {searchQuery ? "No contacts match your search" : "No contacts with phone numbers"}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {/* Customers Section */}
+                  {filteredCustomers.length > 0 && (
+                    <div className="mb-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <User size={12} className="text-muted-foreground" />
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          Customers
+                        </span>
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                          {filteredCustomers.length}
+                        </Badge>
+                      </div>
+                      <div className="space-y-1">
+                        {filteredCustomers.map((customer) => (
+                          <div
+                            key={customer.id}
+                            className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/50 transition-colors"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
+                                <User size={14} className="text-emerald-600 dark:text-emerald-400" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-foreground truncate">
+                                  {customer.name}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {customer.phone}
+                                </p>
+                              </div>
+                            </div>
+                            <a
+                              href={`tel:${customer.phone}`}
+                              className="shrink-0 inline-flex items-center justify-center h-8 w-8 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
+                              aria-label={`Call ${customer.name} at ${customer.phone}`}
+                            >
+                              <Phone size={12} />
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Companies Section */}
+                  {filteredCompanies.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Building2 size={12} className="text-muted-foreground" />
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          Companies
+                        </span>
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                          {filteredCompanies.length}
+                        </Badge>
+                      </div>
+                      <div className="space-y-1">
+                        {filteredCompanies.map((company) => (
+                          <div
+                            key={company.id}
+                            className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/50 transition-colors"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
+                                <Building2 size={14} className="text-amber-600 dark:text-amber-400" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-foreground truncate">
+                                  {company.name}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {company.phone}
+                                </p>
+                              </div>
+                            </div>
+                            <a
+                              href={`tel:${company.phone}`}
+                              className="shrink-0 inline-flex items-center justify-center h-8 w-8 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
+                              aria-label={`Call ${company.name} at ${company.phone}`}
+                            >
+                              <Phone size={12} />
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
-          ))}
-        </div>
-      </div>
+          </ScrollArea>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

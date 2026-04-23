@@ -52,9 +52,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -106,37 +106,41 @@ export default function DashboardPage() {
       </div>
 
       {/* Pipeline & Activities */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Deal Pipeline */}
         <Card>
-          <CardHeader><CardTitle className="text-base">Deal Pipeline</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-base">Deal Pipeline</CardTitle></CardHeader>
           <CardContent className="space-y-2">
-            {data.deals?.byStage && Object.entries(data.deals.byStage).map(([stage, info]: [string, any]) => (
-              <div key={stage} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
-                <div className="flex items-center gap-2">
-                  <Badge variant={stage === "Won" ? "default" : stage === "Lost" ? "destructive" : "secondary"}>{stage}</Badge>
-                  <span className="text-sm">{info.count} deals</span>
-                </div>
-                <span className="text-sm font-medium">${(info.totalValue || 0).toLocaleString()}</span>
+            <div className="overflow-x-auto -mx-6 px-6 lg:mx-0 lg:px-0">
+              <div className="min-w-[300px] space-y-2">
+                {data.deals?.byStage && Object.entries(data.deals.byStage).map(([stage, info]: [string, any]) => (
+                  <div key={stage} className="flex items-center justify-between p-2 sm:p-2.5 rounded-lg bg-muted/50">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Badge variant={stage === "Won" ? "default" : stage === "Lost" ? "destructive" : "secondary"} className="flex-shrink-0">{stage}</Badge>
+                      <span className="text-sm truncate">{info.count} deals</span>
+                    </div>
+                    <span className="text-sm font-medium flex-shrink-0 ml-2">${(info.totalValue || 0).toLocaleString()}</span>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </CardContent>
         </Card>
 
         {/* Recent Activity */}
         <Card>
-          <CardHeader><CardTitle className="text-base">Recent Activity</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-base">Recent Activity</CardTitle></CardHeader>
           <CardContent>
             <div className="max-h-64 overflow-y-auto space-y-2">
               {data.recentActivities?.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No recent activity</p>}
               {data.recentActivities?.map((a: any) => (
                 <div key={a.id} className="flex items-start gap-2 p-2 rounded-lg hover:bg-muted/30">
-                  <Badge variant={a.action === "Create" ? "default" : a.action === "Delete" ? "destructive" : "secondary"} className="text-xs">
+                  <Badge variant={a.action === "Create" ? "default" : a.action === "Delete" ? "destructive" : "secondary"} className="text-xs flex-shrink-0">
                     {a.action}
                   </Badge>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm truncate">{a.details}</p>
-                    <p className="text-xs text-muted-foreground">{a.user?.name} · {new Date(a.createdAt).toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground truncate">{a.user?.name} · {new Date(a.createdAt).toLocaleString()}</p>
                   </div>
                 </div>
               ))}
@@ -146,36 +150,36 @@ export default function DashboardPage() {
       </div>
 
       {/* Upcoming & Todos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <Card>
-          <CardHeader><CardTitle className="text-base flex items-center gap-2"><Calendar size={16} /> Upcoming Meetings</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Calendar size={16} /> Upcoming Meetings</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-2">
               {data.upcomingMeetings?.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No upcoming meetings</p>}
               {data.upcomingMeetings?.map((m: any) => (
-                <div key={m.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
-                  <div>
-                    <p className="text-sm font-medium">{m.title}</p>
+                <div key={m.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-2 rounded-lg bg-muted/30 gap-1 sm:gap-0">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{m.title}</p>
                     <p className="text-xs text-muted-foreground">{new Date(m.startDate).toLocaleString()}</p>
                   </div>
-                  <Badge variant="outline">{m.status}</Badge>
+                  <Badge variant="outline" className="flex-shrink-0 w-fit">{m.status}</Badge>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle className="text-base flex items-center gap-2"><CheckCircle size={16} /> Pending Tasks</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><CheckCircle size={16} /> Pending Tasks</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-2">
               {data.pendingTodos?.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">All tasks completed!</p>}
               {data.pendingTodos?.map((t: any) => (
-                <div key={t.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
-                  <div>
-                    <p className="text-sm font-medium">{t.title}</p>
+                <div key={t.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-2 rounded-lg bg-muted/30 gap-1 sm:gap-0">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{t.title}</p>
                     <p className="text-xs text-muted-foreground">{t.dueDate ? `Due: ${new Date(t.dueDate).toLocaleDateString()}` : "No due date"}</p>
                   </div>
-                  <Badge variant={t.priority === "Urgent" ? "destructive" : t.priority === "High" ? "default" : "secondary"}>{t.priority}</Badge>
+                  <Badge variant={t.priority === "Urgent" ? "destructive" : t.priority === "High" ? "default" : "secondary"} className="flex-shrink-0 w-fit">{t.priority}</Badge>
                 </div>
               ))}
             </div>

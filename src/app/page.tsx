@@ -4,40 +4,10 @@ import { SessionProvider } from "next-auth/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { useState, useEffect, useCallback } from "react"
 import { useSession, signIn, signOut } from "next-auth/react"
-import { io, Socket } from "socket.io-client"
 import dynamic from "next/dynamic"
+import React from "react"
 
-// Lazy load all feature components
-const AuthModal = dynamic(() => import("@/components/AuthModal").then(m => ({ default: m.AuthModal })), { ssr: false })
-const SideBar = dynamic(() => import("@/components/layout/SideBar")), { ssr: false })
-const NavBar = dynamic(() => import("@/components/layout/NavBar")), { ssr: false })
-
-// Dashboard
-const Dashboard = dynamic(() => import("@/feature/dashboard/components").then(m => ({ default: m.default })), { ssr: false })
-// Deals
-const Deals = dynamic(() => import("@/feature/deals/components").then(m => ({ default: m.default })), { ssr: false })
-// Todos
-const Todos = dynamic(() => import("@/feature/todo/components").then(m => ({ default: m.default })), { ssr: false })
-// Meetings
-const Meetings = dynamic(() => import("@/feature/meetings/components").then(m => ({ default: m.default })), { ssr: false })
-// Prospects
-const Prospects = dynamic(() => import("@/feature/prospects/components").then(m => ({ default: m.default })), { ssr: false })
-// Customers
-const Customers = dynamic(() => import("@/feature/customers/components").then(m => ({ default: m.default })), { ssr: false })
-// Companies
-const Companies = dynamic(() => import("@/feature/companies/components").then(m => ({ default: m.default })), { ssr: false })
-// Settings Users
-const UsersSettings = dynamic(() => import("@/feature/settings/users").then(m => ({ default: m.default })), { ssr: false })
-// Settings Email
-const EmailSettings = dynamic(() => import("@/feature/settings/email/components").then(m => ({ default: m.default })), { ssr: false })
-// SuperAdmin
-const SuperAdminDashboard = dynamic(() => import("@/components/SuperAdminDashboard"), { ssr: false })
-// VoIP
-const VoIPPanel = dynamic(() => import("@/components/VoIPPanel"), { ssr: false })
-// Profile
-const ProfileSettings = dynamic(() => import("@/components/ProfileSettings"), { ssr: false })
-
-// Global navigation store
+// ─── Global Navigation State ───
 let currentPage = "dashboard"
 let currentSpaceId = ""
 const pageListeners = new Set<() => void>()
@@ -50,7 +20,7 @@ export function navigateTo(page: string) {
 
 export function getCurrentPage() { return currentPage }
 export function getCurrentSpaceId() { return currentSpaceId }
-export function setCurrentSpaceId(id: string) { 
+export function setCurrentSpaceId(id: string) {
   currentSpaceId = id
   spaceListeners.forEach(l => l())
 }
@@ -75,57 +45,38 @@ export function useCurrentSpace() {
   return currentSpaceId
 }
 
+// ─── Lazy-loaded Feature Components ───
+const AuthModal = dynamic(() => import("@/components/AuthModal").then(m => ({ default: m.AuthModal })), { ssr: false })
+const SideBar = dynamic(() => import("@/components/layout/SideBar"), { ssr: false })
+const NavBar = dynamic(() => import("@/components/layout/NavBar"), { ssr: false })
+const SuperAdminDashboard = dynamic(() => import("@/components/SuperAdminDashboard"), { ssr: false })
+const VoIPPanel = dynamic(() => import("@/components/VoIPPanel"), { ssr: false })
+const ProfileSettings = dynamic(() => import("@/components/ProfileSettings"), { ssr: false })
+
+// CRM Feature pages
+const DashboardPage = dynamic(() => import("@/feature/dashboard/components/DashboardPage"), { ssr: false })
+const DealsPage = dynamic(() => import("@/feature/deals/components/DealsPage"), { ssr: false })
+const TodosPage = dynamic(() => import("@/feature/todo/components/TodosPage"), { ssr: false })
+const MeetingsPage = dynamic(() => import("@/feature/meetings/components/MeetingsPage"), { ssr: false })
+const ProspectsPage = dynamic(() => import("@/feature/prospects/components/ProspectsPage"), { ssr: false })
+const CustomersPage = dynamic(() => import("@/feature/customers/components/CustomersPage"), { ssr: false })
+const CompaniesPage = dynamic(() => import("@/feature/companies/components/CompaniesPage"), { ssr: false })
+const UsersSettings = dynamic(() => import("@/feature/settings/users/UsersSettingsPage"), { ssr: false })
+const EmailSettings = dynamic(() => import("@/feature/settings/email/components/EmailSettingsPage"), { ssr: false })
+
 function AppContent() {
   const { data: session, status } = useSession()
   const page = useCurrentPage()
   const spaceId = useCurrentSpace()
-  const [socket, setSocket] = useState<Socket | null>(null)
-  const [onlineUsers, setOnlineUsers] = useState<any[]>([])
   const [showVoIP, setShowVoIP] = useState(false)
 
-  // Initialize WebSocket
-  useEffect(() => {
-    if (session?.user && !socket) {
-      const newSocket = io("/?XTransformPort=3003", {
-        transports: ["websocket"],
-      })
-      newSocket.on("connect", () => {
-        newSocket.emit("auth", {
-          userId: (session.user as any).id,
-          name: session.user.name || "User",
-          spaceId: currentSpaceId || undefined,
-          role: (session.user as any).globalRole,
-        })
-      })
-      newSocket.on("online-users", (users: any[]) => setOnlineUsers(users))
-      newSocket.on("presence-update", (data: any) => {
-        setOnlineUsers(prev => {
-          const filtered = prev.filter(u => u.userId !== data.userId)
-          if (data.status === "online") filtered.push(data)
-          return filtered
-        })
-      })
-      setSocket(newSocket)
-
-      // Heartbeat
-      const heartbeat = setInterval(() => newSocket.emit("heartbeat"), 30000)
-      return () => { clearInterval(heartbeat); newSocket.close() }
-    }
-  }, [session])
-
-  // Update socket space
-  useEffect(() => {
-    if (socket && spaceId) {
-      socket.emit("set-space", { spaceId })
-    }
-  }, [socket, spaceId])
-
-  // Presence API heartbeat
+  // Presence heartbeat
   useEffect(() => {
     if (session?.user) {
       const interval = setInterval(() => {
         fetch("/api/presence", { method: "POST" }).catch(() => {})
       }, 30000)
+      fetch("/api/presence", { method: "POST" }).catch(() => {})
       return () => clearInterval(interval)
     }
   }, [session])
@@ -152,42 +103,40 @@ function AppContent() {
 
   const renderPage = () => {
     switch (page) {
-      case "dashboard": return <Dashboard />
-      case "deals": return <Deals />
-      case "todo": return <Todos />
-      case "meetings": return <Meetings />
-      case "prospects": return <Prospects />
-      case "customers": return <Customers />
-      case "companies": return <Companies />
+      case "dashboard": return <DashboardPage />
+      case "deals": return <DealsPage />
+      case "todo": return <TodosPage />
+      case "meetings": return <MeetingsPage />
+      case "prospects": return <ProspectsPage />
+      case "customers": return <CustomersPage />
+      case "companies": return <CompaniesPage />
       case "settings/users": return <UsersSettings />
       case "settings/email": return <EmailSettings />
       case "superadmin": return <SuperAdminDashboard />
       case "profile": return <ProfileSettings />
-      default: return <Dashboard />
+      default: return <DashboardPage />
     }
   }
 
   return (
-    <div className="flex h-[100dvh]">
+    <div className={isDemo ? "pt-8" : ""}>
       {/* Demo Account Banner */}
       {isDemo && (
-        <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-500 text-amber-950 text-center py-1.5 text-sm font-medium">
+        <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-500 text-amber-950 text-center py-1.5 text-sm font-medium shadow-md">
           ⚠️ Demo Account — All data shown is sample data and not real. Changes may be reset at any time.
         </div>
       )}
-      
-      <div className={isDemo ? "mt-8" : ""}>
-        <SideBar />
-      </div>
-      <div className="flex flex-col flex-1 overflow-x-hidden">
-        <NavBar onToggleVoIP={() => setShowVoIP(!showVoIP)} onlineCount={onlineUsers.length} />
-        <div className="overflow-y-auto overflow-x-hidden flex-1">
-          {renderPage()}
+      <div className="flex h-[100dvh]">
+        <SideBar onToggleVoIP={() => setShowVoIP(!showVoIP)} />
+        <div className="flex flex-col flex-1 overflow-x-hidden">
+          <NavBar onToggleVoIP={() => setShowVoIP(!showVoIP)} />
+          <div className="overflow-y-auto overflow-x-hidden flex-1">
+            {renderPage()}
+          </div>
         </div>
+        {/* VoIP Panel */}
+        {showVoIP && <VoIPPanel onClose={() => setShowVoIP(false)} />}
       </div>
-      
-      {/* VoIP Panel */}
-      {showVoIP && <VoIPPanel socket={socket} onlineUsers={onlineUsers} onClose={() => setShowVoIP(false)} />}
     </div>
   )
 }

@@ -1,11 +1,11 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 import Modal from '@/components/ui/Modal';
-import { Badge } from '@/components/ui/Table';
+import { Badge } from '@/components/ui/badge';
 import { Deal } from '../types';
 import AvatarInitials from '@/components/ui/AvatarInitials';
 import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { X, Edit, Trash2, Download, Plus, Loader, Send, MessageSquare, Activity } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -208,7 +208,7 @@ export default function DealDetail({
     { label: 'Company', value: getCompanyName(deal.company) },
     { label: 'Contact', value: getContactName(deal.contact) },
     { label: 'Stage', value: (<Badge variant={deal.stage}>{deal.stage}</Badge>) },
-    { label: 'Amount', value: `${getCurrencySymbol((deal as any).currency)}${deal.amount.toLocaleString()}` },
+    { label: 'Amount', value: `${getCurrencySymbol(deal.currency)}${(deal.value ?? deal.amount || 0).toLocaleString()}` },
     {
       label: 'Owner',
       value: (
@@ -244,7 +244,7 @@ export default function DealDetail({
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label={deal.dealName}
+        aria-label={deal.title || deal.dealName}
       >
         {/* Mobile drag handle */}
         <div className="flex justify-center pt-3 pb-1 lg:hidden">
@@ -253,7 +253,7 @@ export default function DealDetail({
 
         {/* ── Header ── */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-border shrink-0">
-          <h2 className="text-lg font-semibold text-foreground truncate pr-2">{deal.dealName}</h2>
+          <h2 className="text-lg font-semibold text-foreground truncate pr-2">{deal.title || deal.dealName}</h2>
           <button
             onClick={onClose}
             className="text-muted-foreground hover:text-foreground transition-colors shrink-0 rounded-md p-1 hover:bg-accent"

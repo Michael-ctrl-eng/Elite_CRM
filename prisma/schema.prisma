@@ -28,7 +28,6 @@ model Space {
   customers    Customer[]
   companies    Company[]
   activityLogs ActivityLog[]
-  invitations  Invitation[]
 }
 
 // ─── SPACE MEMBERSHIP ───
@@ -318,19 +317,4 @@ model EmailSettings {
   userRel User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// ─── INVITATION ───
 
-model Invitation {
-  id        String   @id @default(cuid()) @db.VarChar(30)
-  email     String   @db.VarChar(255)
-  token     String   @unique @db.VarChar(255)
-  role      String   @default("viewer") @db.VarChar(20)
-  status    String   @default("pending") @db.VarChar(20) // pending | accepted | expired
-  expiresAt DateTime
-  invitedBy String   @db.VarChar(30)
-  spaceId   String   @db.VarChar(30)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  space Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-}

@@ -47,22 +47,26 @@ export async function GET(req: NextRequest) {
       orderBy: { name: "asc" },
     })
 
-    // Format response with type field
-    const formattedCustomers = customers.map((c) => ({
-      id: c.id,
-      name: c.name,
-      phone: c.phone,
-      email: c.email,
-      type: "customer" as const,
-    }))
+    // Filter out empty phone strings and format
+    const formattedCustomers = customers
+      .filter((c) => c.phone && c.phone.trim().length > 0)
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        phone: c.phone,
+        email: c.email,
+        type: "customer" as const,
+      }))
 
-    const formattedCompanies = companies.map((c) => ({
-      id: c.id,
-      name: c.name,
-      phone: c.phone,
-      email: c.email,
-      type: "company" as const,
-    }))
+    const formattedCompanies = companies
+      .filter((c) => c.phone && c.phone.trim().length > 0)
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        phone: c.phone,
+        email: c.email,
+        type: "company" as const,
+      }))
 
     return NextResponse.json({
       customers: formattedCustomers,

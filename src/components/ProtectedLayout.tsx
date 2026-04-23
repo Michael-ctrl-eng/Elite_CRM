@@ -21,8 +21,10 @@ import ProspectSlideOver from "@/feature/prospects/components/ProspectModel";
 
 export default function ProtectedLayout({children}: { children: React.ReactNode }) {
     const {status} = useSession()
-    const [isAuthenticated, setIsAuthenticated] = useState(false)
+    const isAuthenticated = status === "authenticated"
     const [showChildren, setShowChildren] = useState(false)
+    const [prevAuth, setPrevAuth] = useState(false)
+    const [prevPathname, setPrevPathname] = useState("")
     const router = useRouter()
     const {isOpen: isCompanyOpen, closeModal: closeCompanyModal, mode: companyMode} = useCompanyModalStore();
     const {isOpen: isCustomerOpen, closeModal: closeCustomerModal, mode: customerMode} = useCustomerModalStore();
@@ -34,23 +36,30 @@ export default function ProtectedLayout({children}: { children: React.ReactNode 
     const pathname = usePathname()
 
 
+    // Adjust state during render when auth status or pathname changes
+    if (prevAuth !== isAuthenticated || (isAuthenticated && prevPathname !== pathname)) {
+        setPrevAuth(isAuthenticated)
+        setPrevPathname(pathname)
+        if (isAuthenticated) {
+            setShowChildren(false)
+        }
+    }
+
+    // Redirect unauthenticated users
     useEffect(() => {
         if (status === "unauthenticated" && pathname !== "/auth" && pathname !== "/verify") {
             router.push("/auth")
-            setIsAuthenticated(false)
-            setShowChildren(false)
-        } else if (status === "authenticated") {
-            setIsAuthenticated(true)
-            // Reset showChildren on route change
-            setShowChildren(false)
-            // Show children after 1 second delay
-            const timer = setTimeout(() => {
-                setShowChildren(true)
-            }, 1000)
-
-            return () => clearTimeout(timer)
         }
     }, [status, pathname, router])
+
+    // Show children after 1 second delay when authenticated
+    useEffect(() => {
+        if (!isAuthenticated) return
+        const timer = setTimeout(() => {
+            setShowChildren(true)
+        }, 1000)
+        return () => clearTimeout(timer)
+    }, [isAuthenticated, pathname])
 
     // Show loading while session is loading OR when unauthenticated on protected route
     if (status === "loading" || (status === "unauthenticated" && pathname !== "/auth" && pathname !== "/verify")) {

@@ -10,10 +10,16 @@ export default function DashboardPage() {
   const spaceId = useCurrentSpace()
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [prevSpaceId, setPrevSpaceId] = useState(spaceId)
+
+  // Reset loading when spaceId changes (adjusting state during render)
+  if (prevSpaceId !== spaceId) {
+    setPrevSpaceId(spaceId)
+    setLoading(true)
+  }
 
   useEffect(() => {
     if (!spaceId) return
-    setLoading(true)
     fetch(`/api/dashboard?spaceId=${spaceId}`)
       .then(r => r.ok ? r.json() : null)
       .then(d => setData(d))

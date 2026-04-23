@@ -55,10 +55,10 @@ export function CustomerHeader({ editCustomer, showEditModal, onEditCustomer, on
   };
   const [selectedUser, setSelectedUser] = useState<string>(getSelectedStatus())
   const [showFilter, setShowFilter] = useState(false)
-  const [searchQueries, setSearchQueries] = useState<Record<string, string>>({});
-  const [showNewCustomers, setShowNewCustomers] = useState<boolean>(false);
-  const [showActionDropdown, setShowActionDropdown] = useState(false);
   const searchParams = useSearchParams()
+  const [searchQueries, setSearchQueries] = useState<Record<string, string>>({});
+  const [showNewCustomers, setShowNewCustomers] = useState<boolean>(searchParams.get("new") === "contact");
+  const [showActionDropdown, setShowActionDropdown] = useState(false);
   const setSearchTerm = useCustomersStore((state) => state.setSearchTerm);
   const [searchInput, setSearchInput] = useState("");
 
@@ -70,13 +70,6 @@ export function CustomerHeader({ editCustomer, showEditModal, onEditCustomer, on
     setSearchTerm(debouncedSearchTerm);
   }, [debouncedSearchTerm, setSearchTerm]);
   
-  useEffect(() => {
-    const newParam = searchParams.get("new")
-    if (newParam === "contact") {
-      setShowNewCustomers(true)
-          }
-        }, [searchParams])
-
   const handleCloseModal = () => {
     setShowNewCustomers(false);
     if (onCloseEditModal) {

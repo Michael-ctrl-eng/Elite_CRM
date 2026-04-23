@@ -42,12 +42,12 @@ export function DealsHeader({ view, setView, selectedDeals = [], selectedDealRow
   const [selectedUser, setSelectedUser] = useState("Closed")
   const [showFilter, setShowFilter] = useState(false)
   const { exportAllDeals, importDealsFromExcel, exportSelectedDeals, deleteDeal, filters, setFilters, applyFilters, setClosedDateFilter } = useDealStore();
+  const searchParams = useSearchParams()
   const [searchQueries, setSearchQueries] = useState<Record<string, string>>({});
-  const [showNewDealer, setShowNewDealer] = useState<boolean>(false);
+  const [showNewDealer, setShowNewDealer] = useState<boolean>(searchParams.get("new") === "deal");
   const [editDeal, setEditDeal] = useState<Deal | null>(null);
   const [closedDate, setClosedDate] = useState<Date | null>(null);
   const [searchInput, setSearchInput] = useState("");
-  const searchParams = useSearchParams()
   const setSearchTerm = useDealStore((s) => s.setSearchTerm);
   const { data: session } = useSession();
 
@@ -61,13 +61,6 @@ export function DealsHeader({ view, setView, selectedDeals = [], selectedDealRow
 
   // Export/Import via store (already destructured above)
   const [showActionDropdown, setShowActionDropdown] = useState(false);
-
-  useEffect(() => {
-    const newParam = searchParams.get("new")
-    if (newParam === "deal") {
-      setShowNewDealer(true)
-    }
-  }, [searchParams])
 
   const handleEditDeal = (deal: Deal) => {
     setEditDeal(deal);

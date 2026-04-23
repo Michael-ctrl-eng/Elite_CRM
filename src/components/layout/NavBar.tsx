@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { signOut, useSession } from "next-auth/react"
 import { useCurrentPage } from "@/app/page"
-import { Bell, MessageSquare, Phone, Search, LogOut, User, Briefcase } from "lucide-react"
+import { Bell, MessageSquare, Phone, Search, LogOut, User, Briefcase, Menu } from "lucide-react"
 import { navigateTo } from "@/app/page"
 
 const pageDescriptions: Record<string, { title: string; description: string }> = {
@@ -21,7 +21,7 @@ const pageDescriptions: Record<string, { title: string; description: string }> =
   hiring: { title: "Hiring", description: "Manage your recruitment pipeline — coming soon." },
 }
 
-export default function NavBar({ onToggleVoIP, onlineCount }: { onToggleVoIP?: () => void; onlineCount?: number }) {
+export default function NavBar({ onToggleVoIP, onlineCount, setMobileMenuOpen }: { onToggleVoIP?: () => void; onlineCount?: number; setMobileMenuOpen?: (open: boolean) => void }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const page = useCurrentPage()
@@ -41,9 +41,19 @@ export default function NavBar({ onToggleVoIP, onlineCount }: { onToggleVoIP?: (
 
   return (
     <header className="flex items-center h-[68px] w-full justify-between px-6 py-3 border-b border-border bg-card">
-      <div className="flex flex-col gap-0.5">
-        <h1 className="text-lg font-semibold text-foreground">{pageInfo.title}</h1>
-        <p className="text-sm text-muted-foreground">{pageInfo.description}</p>
+      <div className="flex items-center gap-3">
+        {/* Mobile hamburger menu */}
+        {setMobileMenuOpen && (
+          <button onClick={() => setMobileMenuOpen(true)}
+            className="p-2 rounded-lg hover:bg-accent transition-colors md:hidden"
+            aria-label="Open menu">
+            <Menu size={20} className="text-foreground" />
+          </button>
+        )}
+        <div className="flex flex-col gap-0.5">
+          <h1 className="text-lg font-semibold text-foreground">{pageInfo.title}</h1>
+          <p className="text-sm text-muted-foreground">{pageInfo.description}</p>
+        </div>
       </div>
 
       <div className="flex items-center gap-3">

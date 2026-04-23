@@ -7,6 +7,7 @@ import { z } from "zod"
 const todoSchema = z.object({
   title: z.string().min(1),
   description: z.string().optional(),
+  notes: z.string().optional(),
   status: z.enum(["Todo", "InProgress", "OnHold", "Done"]).default("Todo"),
   priority: z.enum(["Low", "Medium", "High", "Urgent"]).default("Medium"),
   dueDate: z.string().optional(),

@@ -125,6 +125,7 @@ model Deal {
   probability Int?
   closeDate   DateTime?
   description String?   @db.Text
+  notes       String?   @db.Text
   tags        String?   @db.Text
   source      String?   @db.VarChar(100)
   contactId   String?   @db.VarChar(30)
@@ -146,6 +147,7 @@ model Todo {
   id           String   @id @default(cuid()) @db.VarChar(30)
   title        String   @db.VarChar(255)
   description  String?  @db.Text
+  notes        String?  @db.Text
   status       String   @default("Todo") @db.VarChar(30)
   priority     String   @default("Medium") @db.VarChar(20)
   dueDate      DateTime?
@@ -168,6 +170,7 @@ model Meeting {
   id           String   @id @default(cuid()) @db.VarChar(30)
   title        String   @db.VarChar(255)
   description  String?  @db.Text
+  notes        String?  @db.Text
   location     String?  @db.VarChar(255)
   status       String   @default("Scheduled") @db.VarChar(30)
   startDate    DateTime

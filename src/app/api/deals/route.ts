@@ -13,6 +13,7 @@ const dealSchema = z.object({
   closeDate: z.string().optional(),
   description: z.string().optional(),
   tags: z.string().optional(),
+  notes: z.string().optional(),
   source: z.string().optional(),
   contactId: z.string().optional(),
   companyId: z.string().optional(),

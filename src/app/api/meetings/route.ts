@@ -7,6 +7,7 @@ import { z } from "zod"
 const meetingSchema = z.object({
   title: z.string().min(1),
   description: z.string().optional(),
+  notes: z.string().optional(),
   location: z.string().optional(),
   status: z.enum(["Scheduled", "Confirmed", "Cancelled"]).default("Scheduled"),
   startDate: z.string(),

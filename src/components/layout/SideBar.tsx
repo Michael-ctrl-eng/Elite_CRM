@@ -25,13 +25,18 @@ const sidebarItems = [
   },
 ]
 
-export default function SideBar({ onToggleVoIP }: { onToggleVoIP?: () => void }) {
+export default function SideBar({ onToggleVoIP, mobileMenuOpen, setMobileMenuOpen }: { onToggleVoIP?: () => void; mobileMenuOpen?: boolean; setMobileMenuOpen?: (open: boolean) => void }) {
   const { data: session } = useSession()
   const page = useCurrentPage()
   const spaceId = useCurrentSpace()
   const [spaces, setSpaces] = useState<any[]>([])
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set(["Contact", "Settings"]))
   const [showSpaceDropdown, setShowSpaceDropdown] = useState(false)
+
+  // Close mobile menu on navigation
+  useEffect(() => {
+    if (setMobileMenuOpen) setMobileMenuOpen(false)
+  }, [page])
 
   const userName = session?.user?.name || "User"
   const userEmail = session?.user?.email || ""
@@ -70,7 +75,24 @@ export default function SideBar({ onToggleVoIP }: { onToggleVoIP?: () => void })
   }
 
   return (
-    <div className="w-[256px] h-[100dvh] flex flex-col border-r border-border bg-card">
+    <>
+      {/* Backdrop overlay - mobile only */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity duration-300"
+          onClick={() => setMobileMenuOpen?.(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar */}
+      <div
+        className={`w-[256px] h-[100dvh] flex flex-col border-r border-border bg-card
+          fixed inset-y-0 left-0 z-50 md:relative md:z-auto
+          transition-transform duration-300 ease-in-out
+          ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+        `}
+      >
       {/* Logo */}
       <div className="h-[68px] p-2">
         <div className="flex w-[239px] h-[52px] p-2 items-center gap-2">
@@ -199,5 +221,6 @@ export default function SideBar({ onToggleVoIP }: { onToggleVoIP?: () => void })
         </div>
       </div>
     </div>
+    </>
   )
 }

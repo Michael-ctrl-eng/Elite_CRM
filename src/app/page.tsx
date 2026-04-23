@@ -71,6 +71,7 @@ function AppContent() {
   const page = useCurrentPage()
   const spaceId = useCurrentSpace()
   const [showVoIP, setShowVoIP] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   // Presence heartbeat
   useEffect(() => {
@@ -130,9 +131,9 @@ function AppContent() {
         </div>
       )}
       <div className="flex h-[100dvh]">
-        <SideBar onToggleVoIP={() => setShowVoIP(!showVoIP)} />
+        <SideBar onToggleVoIP={() => setShowVoIP(!showVoIP)} mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen} />
         <div className="flex flex-col flex-1 overflow-x-hidden">
-          <NavBar onToggleVoIP={() => setShowVoIP(!showVoIP)} />
+          <NavBar onToggleVoIP={() => setShowVoIP(!showVoIP)} setMobileMenuOpen={setMobileMenuOpen} />
           <div className="overflow-y-auto overflow-x-hidden flex-1">
             {renderPage()}
           </div>

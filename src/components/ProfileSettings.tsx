@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Camera, Upload, Save } from "lucide-react"
+import { Icon } from "@iconify/react"
 
 export default function ProfileSettings() {
   const { data: session } = useSession()
@@ -93,7 +94,7 @@ export default function ProfileSettings() {
             <div>
               <p className="font-medium text-foreground">{name || "Your Name"}</p>
               <p className="text-sm text-muted-foreground">{session?.user?.email}</p>
-              <p className="text-xs text-muted-foreground mt-1">🔒 Email cannot be changed</p>
+              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1"><Icon icon="sidekickicons:lock-closed" className="w-3 h-3" /> Email cannot be changed</p>
             </div>
           </div>
 

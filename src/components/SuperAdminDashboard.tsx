@@ -17,7 +17,7 @@ export default function SuperAdminDashboard() {
   const [showCreateSpace, setShowCreateSpace] = useState(false)
   const [showAddUser, setShowAddUser] = useState(false)
   const [newSpace, setNewSpace] = useState({ name: "", slug: "", description: "", industry: "" })
-  const [newUser, setNewUser] = useState({ name: "", email: "", role: "viewer", spaceId: "" })
+  const [newUser, setNewUser] = useState({ name: "", email: "", role: "viewer", spaceId: "", password: "" })
   const [refreshing, setRefreshing] = useState(false)
 
   const fetchData = useCallback(async () => {
@@ -63,7 +63,7 @@ export default function SuperAdminDashboard() {
     })
     if (res.ok) {
       setShowAddUser(false)
-      setNewUser({ name: "", email: "", role: "viewer", spaceId: "" })
+      setNewUser({ name: "", email: "", role: "viewer", spaceId: "", password: "" })
       fetchData()
     }
   }
@@ -204,9 +204,11 @@ export default function SuperAdminDashboard() {
             <div className="space-y-3">
               <Input placeholder="Full Name" value={newUser.name} onChange={e => setNewUser({ ...newUser, name: e.target.value })} />
               <Input placeholder="Email" type="email" value={newUser.email} onChange={e => setNewUser({ ...newUser, email: e.target.value })} />
+              <Input placeholder="Password (min 6 chars)" type="password" value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} />
               <Select value={newUser.role} onValueChange={v => setNewUser({ ...newUser, role: v })}>
                 <SelectTrigger><SelectValue placeholder="Role" /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="superadmin">SuperAdmin</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="manager">Manager</SelectItem>
                   <SelectItem value="viewer">Viewer</SelectItem>

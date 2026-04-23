@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { signOut, useSession } from "next-auth/react"
 import { useCurrentPage } from "@/app/page"
-import { Bell, MessageSquare, Phone, Search, LogOut, User } from "lucide-react"
+import { Bell, MessageSquare, Phone, Search, LogOut, User, Briefcase } from "lucide-react"
 import { navigateTo } from "@/app/page"
 
 const pageDescriptions: Record<string, { title: string; description: string }> = {
@@ -18,6 +18,7 @@ const pageDescriptions: Record<string, { title: string; description: string }> =
   "settings/email": { title: "Email Settings", description: "Configure email sending and receiving." },
   superadmin: { title: "SuperAdmin Dashboard", description: "Manage all spaces, users, and system activity." },
   profile: { title: "Profile Settings", description: "Update your name and profile picture." },
+  hiring: { title: "Hiring", description: "Manage your recruitment pipeline — coming soon." },
 }
 
 export default function NavBar({ onToggleVoIP, onlineCount }: { onToggleVoIP?: () => void; onlineCount?: number }) {
@@ -59,6 +60,17 @@ export default function NavBar({ onToggleVoIP, onlineCount }: { onToggleVoIP?: (
         {onlineCount !== undefined && onlineCount > 0 && (
           <span className="text-xs text-muted-foreground">{onlineCount} online</span>
         )}
+
+        {/* Hiring - Coming Soon */}
+        <button
+          onClick={() => navigateTo("hiring")}
+          className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border hover:bg-accent transition-colors text-sm text-foreground"
+          title="Coming Soon"
+        >
+          <Briefcase size={14} className="text-muted-foreground" />
+          <span>Hiring</span>
+          <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 leading-none">Soon</span>
+        </button>
 
         <div className="h-6 w-px bg-border"></div>
 

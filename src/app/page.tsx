@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from "react"
 import { useSession, signIn, signOut } from "next-auth/react"
 import dynamic from "next/dynamic"
 import React from "react"
+import { Icon } from "@iconify/react"
 
 // ─── Global Navigation State ───
 let currentPage = "dashboard"
@@ -52,6 +53,7 @@ const NavBar = dynamic(() => import("@/components/layout/NavBar"), { ssr: false 
 const SuperAdminDashboard = dynamic(() => import("@/components/SuperAdminDashboard"), { ssr: false })
 const VoIPPanel = dynamic(() => import("@/components/VoIPPanel"), { ssr: false })
 const ProfileSettings = dynamic(() => import("@/components/ProfileSettings"), { ssr: false })
+const ComingSoon = dynamic(() => import("@/components/ComingSoon"), { ssr: false })
 
 // CRM Feature pages
 const DashboardPage = dynamic(() => import("@/feature/dashboard/components/DashboardPage"), { ssr: false })
@@ -114,6 +116,7 @@ function AppContent() {
       case "settings/email": return <EmailSettings />
       case "superadmin": return <SuperAdminDashboard />
       case "profile": return <ProfileSettings />
+      case "hiring": return <ComingSoon />
       default: return <DashboardPage />
     }
   }
@@ -123,7 +126,7 @@ function AppContent() {
       {/* Demo Account Banner */}
       {isDemo && (
         <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-500 text-amber-950 text-center py-1.5 text-sm font-medium shadow-md">
-          ⚠️ Demo Account — All data shown is sample data and not real. Changes may be reset at any time.
+          <Icon icon="sidekickicons:alert-circle" className="w-4 h-4 inline mr-1" /> Demo Account — All data shown is sample data and not real. Changes may be reset at any time.
         </div>
       )}
       <div className="flex h-[100dvh]">

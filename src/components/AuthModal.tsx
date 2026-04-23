@@ -1,78 +1,35 @@
 "use client"
 
 import { signIn } from "next-auth/react"
-import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react"
+import { useState, type InputHTMLAttributes } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { InquiryModal } from "@/components/InquiryModal"
 
-const baseSchema = z.object({
+const loginSchema = z.object({
   email: z.string().email("Invalid email"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 })
 
-const signupSchema = baseSchema.extend({
-  name: z.string().min(1, "Full name is required"),
-  confirmPassword: z.string().min(6, "Confirm your password"),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords must match",
-  path: ["confirmPassword"],
-})
-
-const loginSchema = baseSchema.extend({
-  name: z.string(),
-  confirmPassword: z.string(),
-})
-
-type AuthFormValues = z.infer<typeof signupSchema>
+type LoginFormValues = z.infer<typeof loginSchema>
 
 export function AuthModal() {
-  const [isSignUp, setIsSignUp] = useState(false)
-  const signupEnabled = process.env.NEXT_PUBLIC_SIGNUP_ENABLED === "true"
   const [error, setError] = useState("")
-  const { data: session } = useSession()
-
-  const resolver = useMemo(() => zodResolver(isSignUp ? signupSchema : loginSchema), [isSignUp])
+  const [inquiryOpen, setInquiryOpen] = useState(false)
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-    reset,
-  } = useForm<AuthFormValues>({
-    resolver,
-    defaultValues: { name: "", email: "", password: "", confirmPassword: "" },
+    getValues,
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: "", password: "" },
   })
 
-  useEffect(() => {
-    reset({ name: "", email: "", password: "", confirmPassword: "" })
-  }, [isSignUp, reset])
-
-  const onSubmit = async (values: AuthFormValues) => {
+  const onSubmit = async (values: LoginFormValues) => {
     setError("")
-
-    if (isSignUp) {
-      const res = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
-      })
-
-      if (res.ok) {
-        const result = await signIn("credentials", {
-          email: values.email,
-          password: values.password,
-          redirect: false,
-        })
-        if (result?.error) setError(result.error)
-      } else {
-        const data = await res.json()
-        setError(data.error || "Signup failed")
-      }
-      return
-    }
 
     const result = await signIn("credentials", {
       email: values.email,
@@ -89,18 +46,12 @@ export function AuthModal() {
     <div className="flex items-center justify-center min-h-screen bg-background">
       <div className="sm:max-w-md border border-border p-0 overflow-hidden rounded-lg shadow-lg bg-card">
         <div className="p-8 space-y-6">
-          {/* Logo */}
-          <div className="flex justify-center">
-            <div className="w-16 h-16 bg-foreground rounded-xl flex items-center justify-center">
-              <span className="text-background text-3xl font-bold">E</span>
-            </div>
-          </div>
           <div className="space-y-2 text-center">
             <h2 className="text-2xl font-semibold text-card-foreground">
-              {isSignUp ? "Create your account" : "Welcome to Elite CRM"}
+              Welcome to Elite CRM
             </h2>
             <p className="text-muted-foreground text-sm">
-              {isSignUp ? "Enter your details below to create your account" : "Sign in to your account to continue"}
+              Sign in to your account to continue
             </p>
           </div>
 
@@ -121,49 +72,33 @@ export function AuthModal() {
               </div>
             )}
 
-            {isSignUp && (
-              <Field label="Full Name" error={errors.name?.message} inputProps={{ ...register("name"), placeholder: "John Doe" }} />
-            )}
             <Field label="Email" error={errors.email?.message} inputProps={{ ...register("email"), type: "email", placeholder: "m@example.com" }} />
             <Field label="Password" error={errors.password?.message} inputProps={{ ...register("password"), type: "password" }} />
-            {isSignUp && (
-              <Field label="Confirm Password" error={errors.confirmPassword?.message} inputProps={{ ...register("confirmPassword"), type: "password" }} />
-            )}
 
             <button type="submit" disabled={isSubmitting}
               className="w-full bg-foreground hover:bg-foreground/90 text-background font-semibold py-2.5 px-6 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
-              {isSignUp ? "Sign up" : "Sign in"}
+              Sign in
             </button>
           </form>
 
-          {/* Demo credentials */}
-          <div className="bg-muted/50 border border-border rounded-lg p-3 text-sm">
-            <p className="font-medium text-center mb-1">Quick Login</p>
-            <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-              <button type="button" onClick={() => { reset({ email: "demo@elite.com", password: "demo123", name: "", confirmPassword: "" }); setIsSignUp(false) }}
-                className="text-left hover:text-foreground transition-colors">
-                🎯 Demo: demo@elite.com
-              </button>
-              <button type="button" onClick={() => { reset({ email: "admin@elite.com", password: "admin123", name: "", confirmPassword: "" }); setIsSignUp(false) }}
-                className="text-left hover:text-foreground transition-colors">
-                👑 Admin: admin@elite.com
-              </button>
-            </div>
+          <div className="text-center text-sm">
+            <span className="text-muted-foreground">Don&apos;t have an account? </span>
+            <button
+              type="button"
+              onClick={() => setInquiryOpen(true)}
+              className="text-foreground font-semibold hover:underline transition-colors"
+            >
+              Get Started
+            </button>
           </div>
-
-          {signupEnabled && (
-            <div className="text-center text-sm">
-              <span className="text-muted-foreground">
-                {isSignUp ? "Already have an account? " : "Don't have an account? "}
-              </span>
-              <button type="button" onClick={() => setIsSignUp(!isSignUp)}
-                className="text-foreground font-semibold hover:underline transition-colors">
-                {isSignUp ? "Sign in" : "Sign up"}
-              </button>
-            </div>
-          )}
         </div>
       </div>
+
+      <InquiryModal
+        open={inquiryOpen}
+        onOpenChange={setInquiryOpen}
+        defaultEmail={getValues("email")}
+      />
     </div>
   )
 }

@@ -62,7 +62,7 @@ export async function POST(req: Request) {
       to: recipient,
       subject: "Test Email from Elite CRM",
       text: "This is a test email to verify your email settings are working correctly.",
-      html: "<p>This is a test email to verify your email settings are working correctly.</p><p>If you received this email, your SMTP configuration is working properly! 🎉</p>",
+      html: "<p>This is a test email to verify your email settings are working correctly.</p><p>If you received this email, your SMTP configuration is working properly!</p>",
     });
 
     return NextResponse.json({

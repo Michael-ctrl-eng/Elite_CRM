@@ -8,8 +8,9 @@ import { z } from "zod"
 const inviteSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
-  role: z.enum(["admin", "manager", "viewer"]).default("viewer"),
+  role: z.enum(["admin", "manager", "viewer", "superadmin"]).default("viewer"),
   spaceId: z.string().optional(),
+  password: z.string().min(6, "Password must be at least 6 characters").optional(),
 })
 
 export async function GET(req: NextRequest) {
@@ -80,9 +81,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "User added to space", userId: existing.id })
     }
 
-    // Create user with random password (Invite status)
-    const tempPassword = Math.random().toString(36).slice(-12)
-    const hashedPassword = await hash(tempPassword, 12)
+    // Create user with provided or random password
+    const userPassword = data.password || Math.random().toString(36).slice(-12)
+    const hashedPassword = await hash(userPassword, 12)
 
     const user = await db.user.create({
       data: {

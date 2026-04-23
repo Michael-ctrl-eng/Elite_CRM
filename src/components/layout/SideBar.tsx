@@ -2,7 +2,7 @@
 
 import { useSession, signOut } from "next-auth/react"
 import { navigateTo, useCurrentPage, useCurrentSpace, setCurrentSpaceId } from "@/app/page"
-import { Settings, LogOut, Phone, Shield, ChevronDown, Building2, User } from "lucide-react"
+import { Settings, LogOut, Phone, Shield, ChevronDown, Building2, User, Briefcase } from "lucide-react"
 import { useState, useEffect } from "react"
 
 const sidebarItems = [
@@ -64,7 +64,7 @@ export default function SideBar({ onToggleVoIP }: { onToggleVoIP?: () => void })
     const map: Record<string, string> = {
       home: null, deal: "/sideBarIcons/handshake.svg", todo: "/sideBarIcons/layout-list.svg",
       meeting: "/sideBarIcons/presentation.svg", prospect: "/sideBarIcons/trending-up.svg",
-      contact: "/sideBarIcons/mail.svg", settings: null,
+      contact: "/sideBarIcons/mail.svg", settings: null, hiring: null,
     }
     return map[icon]
   }
@@ -125,6 +125,7 @@ export default function SideBar({ onToggleVoIP }: { onToggleVoIP?: () => void })
                 >
                   {item.icon === "home" ? <Shield size={16} /> :
                    item.icon === "settings" ? <Settings size={16} /> :
+                   item.icon === "hiring" ? <Briefcase size={16} /> :
                    iconSrc ? <img src={iconSrc} alt={item.label} className="w-4 h-4" /> :
                    <div className="w-4 h-4" />}
                   <span className="flex-1 text-left">{item.label}</span>
@@ -160,6 +161,15 @@ export default function SideBar({ onToggleVoIP }: { onToggleVoIP?: () => void })
             className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-accent/50 transition-colors">
             <Phone size={16} />
             <span>VoIP Calls</span>
+          </button>
+
+          {/* Hiring - Coming Soon */}
+          <button onClick={() => navigateTo("hiring")}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors
+              ${page === "hiring" ? "bg-accent text-accent-foreground font-medium" : "text-foreground hover:bg-accent/50"}`}>
+            <Briefcase size={16} className="text-muted-foreground" />
+            <span className="flex-1 text-left">Hiring</span>
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 leading-none">Soon</span>
           </button>
         </div>
       </div>

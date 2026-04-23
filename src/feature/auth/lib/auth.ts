@@ -1,6 +1,5 @@
-import { prisma } from "@/libs/prisma"
+import { db } from "@/lib/db"
 import CredentialsProvider from "next-auth/providers/credentials"
-import GoogleProvider from "next-auth/providers/google"
 import { compare } from "bcryptjs"
 import type { NextAuthOptions } from "next-auth"
 
@@ -17,7 +16,7 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Email and password are required')
         }
 
-        const user = await prisma.user.findUnique({
+        const user = await db.user.findUnique({
           where: { email: credentials.email },
         })
         if (!user) {
@@ -33,7 +32,7 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Your account is removed. Please contact your admin.')
         }
         if (user.status !== 'Active') {
-          throw new Error('Account is not active. Please Check your email for the invitation.')
+          throw new Error('Account is not active. Please check your email for the invitation.')
         }
 
         const isValid = await compare(credentials.password, user.password)
@@ -41,43 +40,47 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Password is incorrect')
         }
 
-        // Update lastLogin on successful login
-        try {
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { lastLogin: new Date() },
-          })
-        } catch (e) {
-          // non-blocking; if update fails, still allow login
-        }
+        // Update lastSeen on successful login
+        await db.user.update({
+          where: { id: user.id },
+          data: { lastSeen: new Date() },
+        }).catch(() => {})
 
-        return { id: user.id, email: user.email, name: user.name }
+        return { 
+          id: user.id, 
+          email: user.email, 
+          name: user.name,
+          image: user.image,
+          globalRole: user.globalRole,
+          isDemo: user.isDemo
+        }
       },
-    }),
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
   session: {
     strategy: "jwt",
   },
-  // pages: {
-  //   signIn: "/auth",
-  // },
+  pages: {
+    signIn: "/",
+  },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.globalRole = (user as any).globalRole;
+        token.isDemo = (user as any).isDemo;
       }
       return token;
     },
 
     async session({ session, token }) {
-      if (token?.id) {
-        session.user.id = token.id as string;
+      if (session.user) {
+        (session.user as any).id = token.id as string;
+        (session.user as any).globalRole = token.globalRole as string;
+        (session.user as any).isDemo = token.isDemo as boolean;
       }
       return session;
     },
   },
+  secret: process.env.NEXTAUTH_SECRET,
 }

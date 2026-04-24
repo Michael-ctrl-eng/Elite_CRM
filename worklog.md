@@ -256,3 +256,28 @@ Stage Summary:
 - Video uploads go to Hostinger first, then URL is passed to CRM
 - Voice notes are stored as binary in the DB
 - The external marketing site (careers.html) needs the handler function from careers-form-handler.js
+
+---
+Task ID: 1
+Agent: Main
+Task: Clean up Html-elite repo - remove all CRM code, restore as pure HTML website
+
+Work Log:
+- Checked Html-elite git history - entire repo was mixed with CRM/Next.js code from initial commit
+- Reset to commit c96318d (before the last 2 bad commits)
+- Removed ALL CRM-mixed code: src/, prisma/, db/, mini-services/, Next.js config, package.json, etc.
+- Removed duplicate src/src/ directory
+- Removed duplicate prisma/prisma/ directory
+- Created clean index.html from user's provided website content
+- Updated careers form to POST to CRM API (https://crm.elitepartnersus.com/api/careers)
+- Changed video field from file upload to URL input (more reliable for cross-origin)
+- Added proper form submission with success/error states
+- Updated .gitignore for clean HTML project
+- Committed clean state
+
+Stage Summary:
+- Html-elite repo is now a pure HTML/CSS/JS website (just index.html + .gitignore)
+- Careers form submits FormData to CRM API endpoint
+- CRM repo already has /api/careers, /api/hiring, and HiringPage.tsx with full applicant management
+- No CRM code remains in the website repo
+- Need to force push to GitHub when user approves

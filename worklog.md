@@ -150,3 +150,109 @@ Work Log:
 Stage Summary:
 - Careers form on main website can POST to https://crm.elitepartnersus.com/api/careers
 - All career form data flows into the CRM Hiring section
+
+---
+Task ID: 4
+Agent: Sub
+Task: Clone Html-elite repo and examine the careers form
+
+Work Log:
+- Cloned Html-elite repo from https://github.com/Michael-Za/Html-elite.git to /home/z/Html-elite
+- Checked out commit f1ca4dfc9364ca1dec445f75094f7663a1848058 (detached HEAD)
+- This is a Next.js CRM app (NOT a static HTML site - no careers.html exists in this repo)
+- The careers form lives on a SEPARATE website (elitepartnersus.com), not in this repo
+- careers-form-handler.js at repo root is a DROP-IN replacement for the form handler function on the external website
+
+Key findings:
+
+1. ALL FORM FIELD NAMES AND TYPES (from careers-form-handler.js):
+   - full_name (text) - from [name="careerName"] or [name="fullName"]
+   - age (text) - from [name="careerAge"] or [name="age"]
+   - city (text) - from [name="careerCity"] or [name="city"]
+   - email (text) - from [name="careerEmail"] or [name="email"]
+   - whatsapp (text) - from [name="careerWhatsApp"] or [name="whatsapp"]
+   - linkedin (text) - from [name="careerLinkedin"] or [name="linkedin"]
+   - education (text) - from [name="careerEducation"] or [name="education"]
+   - current_status (text) - from [name="careerStatus"] or [name="currentStatus"]
+   - field (text) - from [name="careerField"] or [name="field"], with "Other" fallback to [name="careerOtherField"]
+   - expertise_level (text) - from [name="careerExpertise"] or [name="expertiseLevel"]
+   - work_experience (text) - from [name="careerExperience"] or [name="workExperience"]
+   - english_level (text) - from [name="careerEnglish"] or [name="englishLevel"]
+   - other_skills (text) - from [name="skill"]:checked checkboxes joined by comma
+   - cover_message (textarea) - from [name="careerNotes"] or [name="coverMessage"]
+   - voice_note (file) - from [name="voiceNote"] or [name="voice_note"], max 16MB
+   - video_intro (file) - from [name="videoIntro"] or [name="video_intro"], max 100MB
+
+2. FORM SUBMISSION DESTINATION:
+   - Text fields + voice note → POST https://crm.elitepartnersus.com/api/careers (FormData)
+   - Video → POST https://elitepartnersus.com/upload-video.php first, then URL sent with careers submission
+   - Video upload uses X-Upload-Secret header: 'elite_upload_2026_xK9'
+   - Duplicate email returns 409 with friendly message
+
+3. VOICE/VIDEO RECORDING FEATURES:
+   - Voice note: Direct file upload via FormData (binary), stored as Bytes in DB
+   - Video: Uploaded to Hostinger via upload-video.php first, returns URL, URL saved in DB
+   - No browser-based recording (MediaRecorder API) - just file input uploads
+   - Video endpoint on Hostinger accepts MP4, MOV, WEBM, AVI up to 100MB
+   - Voice note stored in SQLite as MEDIUMBLOB (or Bytes in Prisma)
+
+4. ALL PAGE FILES IN THE REPO:
+   - / (Dashboard)
+   - /deals
+   - /prospects
+   - /hiring
+   - /todo
+   - /meetings
+   - /contact/customers
+   - /contact/companies
+   - /tools/reports
+   - /tools/automation
+   - /settings/workspace
+   - /settings/users
+   - /settings/email
+   - /settings/ai
+   - /super-admin
+   - /auth
+   - /verify
+   - /login
+
+5. ALL API ROUTES IN THE REPO:
+   - /api/careers (POST - public, with CORS)
+   - /api/hiring (GET - list with stats, auth required)
+   - /api/hiring/[id] (GET, PATCH, DELETE - auth required)
+   - /api/hiring/[id]/status (PATCH - auth required)
+   - /api/hiring/[id]/voice (GET - streams voice note audio)
+   - /api/hiring/export (GET - CSV export, auth required)
+   - /api/auth/* (signup, login, logout, verify, update-password, user, [...nextauth])
+   - /api/admin/* (customers, deals, prospects, todos, meetings, companies, contacts, users)
+   - /api/tenant/* (CRUD, users, invite)
+   - /api/invitation (POST)
+   - /api/uploadFile, /api/email, /api/user/profile, /api/super-admin/*
+
+6. DATABASE SCHEMA (Prisma - HiringApplication model):
+   - id (String, UUID), fullName, email, phone?, age?, city?, linkedin?, education?
+   - currentStatus?, field?, expertiseLevel?, experience?, englishLevel?
+   - skills (String, default ""), notes?
+   - voiceNote? (Bytes), voiceNoteName?, voiceNoteType?
+   - videoUrl? (String)
+   - status (ApplicationStatus enum: New/Reviewing/Interview/Offered/Hired/Rejected/Archived)
+   - reviewedBy?, reviewedAt?, internalNotes?
+   - tenantId (String), tenant relation
+   - createdAt, updatedAt
+
+7. WHAT NEEDS TO CHANGE TO SUBMIT TO https://crm.elitepartnersus.com/api/careers:
+   - NOTHING! The careers-form-handler.js ALREADY submits to https://crm.elitepartnersus.com/api/careers
+   - The /api/careers route.ts ALREADY handles the submission with CORS headers
+   - The mapping from form fields to DB model is already complete
+   - The video upload to Hostinger is already configured
+   - The only outstanding issue: the careers.html file on the EXTERNAL website (elitepartnersus.com) needs to have its handleCareerSubmit function replaced with the one in careers-form-handler.js
+   - The careers.html is NOT in this repo - it's on the separate Hostinger-hosted marketing website
+
+Stage Summary:
+- Repo cloned and examined at commit f1ca4df
+- This is the CRM app (Next.js), NOT the marketing website
+- The careers form handler already points to https://crm.elitepartnersus.com/api/careers
+- Form has 15 text fields + voice note upload + video upload
+- Video uploads go to Hostinger first, then URL is passed to CRM
+- Voice notes are stored as binary in the DB
+- The external marketing site (careers.html) needs the handler function from careers-form-handler.js

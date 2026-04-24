@@ -219,7 +219,7 @@ export default function DealDetail({
     { label: 'Company', value: getCompanyName(deal.company) },
     { label: 'Contact', value: getContactName(deal.contact) },
     { label: 'Stage', value: (<Badge variant={deal.stage}>{deal.stage}</Badge>) },
-    { label: 'Amount', value: `${getCurrencySymbol(deal.currency)}${(deal.value ?? deal.amount || 0).toLocaleString()}` },
+    { label: 'Amount', value: `${getCurrencySymbol(deal.currency)}${((deal.value ?? deal.amount) || 0).toLocaleString()}` },
     {
       label: 'Owner',
       value: (
@@ -269,7 +269,7 @@ export default function DealDetail({
             <div className="flex items-center gap-2 mt-1">
               <Badge variant={deal.stage}>{deal.stage}</Badge>
               <span className="text-sm text-muted-foreground">
-                {getCurrencySymbol(deal.currency)}{(deal.value ?? deal.amount || 0).toLocaleString()}
+                {getCurrencySymbol(deal.currency)}{((deal.value ?? deal.amount) || 0).toLocaleString()}
               </span>
             </div>
           </div>

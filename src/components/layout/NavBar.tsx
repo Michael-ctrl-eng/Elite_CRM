@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { signOut, useSession } from "next-auth/react"
 import { useCurrentPage } from "@/app/page"
-import { Bell, MessageSquare, Phone, Search, LogOut, User, Briefcase, Menu, MoreVertical } from "lucide-react"
+import { Bell, Phone, Search, LogOut, User, Briefcase, MoreVertical, PanelLeft } from "lucide-react"
 import { navigateTo } from "@/app/page"
 import NotificationPanel, { useNotificationCount } from "@/components/NotificationPanel"
 
@@ -19,7 +19,7 @@ const pageDescriptions: Record<string, { title: string; description: string }> =
   "settings/email": { title: "Email Settings", description: "Configure email sending and receiving." },
   superadmin: { title: "SuperAdmin Dashboard", description: "Manage all spaces, users, and system activity." },
   profile: { title: "Profile Settings", description: "Update your name and profile picture." },
-  hiring: { title: "Hiring", description: "Manage your recruitment pipeline — coming soon." },
+  hiring: { title: "Hiring", description: "Manage your recruitment pipeline and applicants." },
 }
 
 export default function NavBar({ onToggleVoIP, onlineCount, setMobileMenuOpen }: { onToggleVoIP?: () => void; onlineCount?: number; setMobileMenuOpen?: (open: boolean) => void }) {
@@ -51,12 +51,12 @@ export default function NavBar({ onToggleVoIP, onlineCount, setMobileMenuOpen }:
   return (
     <header className="flex items-center h-[68px] w-full justify-between px-4 sm:px-6 py-3 border-b border-border bg-card">
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-        {/* Mobile hamburger menu */}
+        {/* Sidebar toggle - always visible */}
         {setMobileMenuOpen && (
           <button onClick={() => setMobileMenuOpen(true)}
-            className="p-2 rounded-lg hover:bg-accent transition-colors md:hidden flex-shrink-0"
+            className="p-2 rounded-lg hover:bg-accent transition-colors flex-shrink-0"
             aria-label="Open menu">
-            <Menu size={20} className="text-foreground" />
+            <PanelLeft size={20} className="text-foreground" />
           </button>
         )}
         <div className="flex flex-col gap-0.5 min-w-0">
@@ -80,15 +80,13 @@ export default function NavBar({ onToggleVoIP, onlineCount, setMobileMenuOpen }:
           <span className="text-xs text-muted-foreground hidden md:inline">{onlineCount} online</span>
         )}
 
-        {/* Hiring - Coming Soon - hidden on small screens, shown on md+ */}
+        {/* Hiring button - desktop */}
         <button
           onClick={() => navigateTo("hiring")}
           className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border hover:bg-accent transition-colors text-sm text-foreground min-h-[36px]"
-          title="Coming Soon"
         >
           <Briefcase size={14} className="text-muted-foreground" />
           <span>Hiring</span>
-          <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 leading-none">Soon</span>
         </button>
 
         {/* Mobile overflow menu for VoIP & Hiring */}
@@ -112,7 +110,6 @@ export default function NavBar({ onToggleVoIP, onlineCount, setMobileMenuOpen }:
                 <button onClick={() => { navigateTo("hiring"); setIsOverflowOpen(false) }}
                   className="w-full px-4 py-2.5 text-left text-sm hover:bg-accent flex items-center gap-2 text-foreground min-h-[44px]">
                   <Briefcase size={14} className="text-muted-foreground" /> Hiring
-                  <span className="ml-auto px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 leading-none">Soon</span>
                 </button>
               </div>
             </div>

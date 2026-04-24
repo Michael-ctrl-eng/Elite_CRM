@@ -53,7 +53,6 @@ const NavBar = dynamic(() => import("@/components/layout/NavBar"), { ssr: false 
 const SuperAdminDashboard = dynamic(() => import("@/components/SuperAdminDashboard"), { ssr: false })
 const VoIPPanel = dynamic(() => import("@/components/VoIPPanel"), { ssr: false })
 const ProfileSettings = dynamic(() => import("@/components/ProfileSettings"), { ssr: false })
-const ComingSoon = dynamic(() => import("@/components/ComingSoon"), { ssr: false })
 
 // CRM Feature pages
 const DashboardPage = dynamic(() => import("@/feature/dashboard/components/DashboardPage"), { ssr: false })
@@ -65,6 +64,7 @@ const CustomersPage = dynamic(() => import("@/feature/customers/components/Custo
 const CompaniesPage = dynamic(() => import("@/feature/companies/components").then(m => ({ default: m.default })), { ssr: false })
 const UsersSettings = dynamic(() => import("@/feature/settings/users").then(m => ({ default: m.default })), { ssr: false })
 const EmailSettings = dynamic(() => import("@/feature/settings/email/components").then(m => ({ default: m.default })), { ssr: false })
+const HiringPage = dynamic(() => import("@/feature/hiring/components/HiringPage"), { ssr: false })
 
 function AppContent() {
   const { data: session, status } = useSession()
@@ -91,7 +91,7 @@ function AppContent() {
         fetch("/api/notifications/check").catch(() => {})
       }
       checkNotifications()
-      const interval = setInterval(checkNotifications, 120000) // every 2 minutes
+      const interval = setInterval(checkNotifications, 120000)
       return () => clearInterval(interval)
     }
   }, [session])
@@ -129,7 +129,7 @@ function AppContent() {
       case "settings/email": return <EmailSettings />
       case "superadmin": return <SuperAdminDashboard />
       case "profile": return <ProfileSettings />
-      case "hiring": return <ComingSoon />
+      case "hiring": return <HiringPage />
       default: return <DashboardPage />
     }
   }
@@ -143,6 +143,7 @@ function AppContent() {
         </div>
       )}
       <div className="flex h-[100dvh]">
+        {/* Sidebar is overlay-based now, doesn't take space */}
         <SideBar onToggleVoIP={() => setShowVoIP(!showVoIP)} mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen} />
         <div className="flex flex-col flex-1 overflow-x-hidden">
           <NavBar onToggleVoIP={() => setShowVoIP(!showVoIP)} setMobileMenuOpen={setMobileMenuOpen} />

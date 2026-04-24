@@ -2,245 +2,151 @@
 
 ---
 Task ID: 1
-Agent: Main Agent
-Task: Fix preview panel issues, enhance VoIP with dialpad and settings, organize project
+Agent: Main
+Task: Fix Deal Detail - Replace simple edit dialog with full DealDetail panel
 
 Work Log:
-- Checked dev server status - was not running, restarted it
-- Found cross-origin warning from preview panel, added `allowedDevOrigins` to next.config.ts
-- Rewrote VoIPPanel.tsx with full dialpad keypad (1-9, *, 0, #), phone number input, call/dial functionality
-- Added VoIP Settings panel inside VoIPPanel with SIP provider configuration (server, port, username, password, domain)
-- Added WebRTC/ICE server configuration (STUN/TURN servers)
-- Added call preferences (Auto-Answer, Do Not Disturb)
-- Added Quick Setup Presets for popular providers (Twilio, Vonage, RingCentral, 3CX, Asterisk/FreePBX)
-- Added call history tracking in VoIP panel
-- Added SIP status indicator and provider configuration prompt
-- Created VoipSettings Prisma model with all SIP/WebRTC fields
-- Added voipSetting relation to User model
-- Created /api/voip/settings API route (GET and POST) with password masking
-- Pushed schema to Hostinger MySQL database
-- Verified AI Settings and Invitation references don't exist in codebase
-- Ran lint check - 0 errors, 13 warnings (all pre-existing)
-- Started presence service on port 3003
-- Started dev server on port 3000
+- Analyzed DealsPage.tsx - found it was using a simple Dialog for editing deals instead of the full DealDetail component
+- Updated DealsPage.tsx to import DealDetail dynamically
+- Added handleDealClick() that fetches full deal data from /api/deals/[id] before showing the detail panel
+- Now clicking a deal card shows the full DealDetail panel with updates, activity, description, dates, owner, etc.
+- Edit and delete are accessible through the DealDetail panel and also via action buttons in list view
+- Added description and source fields to the create deal form
 
 Stage Summary:
-- VoIP Panel now has a complete dialpad with phone number input and call button
-- VoIP Settings accessible from gear icon in VoIP panel header
-- SIP provider presets for Twilio, Vonage, RingCentral, 3CX, Asterisk
-- Contact dial buttons now switch to dialpad tab with number populated
-- VoipSettings model persisted to MySQL database
-- Zero compilation errors
-
----
-Task ID: 1
-Agent: Notification Backend Agent
-Task: Build the complete Notification System Backend
-
-Work Log:
-- Added Notification model to Prisma schema (after DealNote, before Todo) with fields: id, type, title, message, read, entityId, entityType, spaceId, userId, createdById, createdAt
-- Added Notification relations to User model: `notifications Notification[]` and `createdNotifications Notification[] @relation("CreatedBy")`
-- Added Notification relation to Space model: `notifications Notification[]`
-- Added `reminderMinutes Int?` field to Todo model for task reminder functionality
-- Pushed schema to Hostinger MySQL database — successful sync
-- Prisma Client regenerated automatically after db push
-- Created `/api/notifications/route.ts` — GET (list with unreadOnly, limit, offset, plus unreadCount) and POST (create with zod validation)
-- Created `/api/notifications/[id]/route.ts` — PATCH (mark as read) and DELETE (with ownership check)
-- Created `/api/notifications/mark-all-read/route.ts` — POST (mark all as read for current user)
-- Created `/api/notifications/check/route.ts` — GET (CRON-like checker for meeting reminders within 15 min and task reminders based on reminderMinutes, with dedup by entityId+type+date)
-- Updated `/api/deals/[id]/notes/route.ts` POST handler to create a `deal_note` notification for deal owner when a note is added by a different user
-- Ran lint check — 0 errors, 13 warnings (all pre-existing, none from new code)
-
-Stage Summary:
-- Notification model fully persisted in MySQL with indexes on [userId, read] and [userId, createdAt]
-- 4 API route files created covering all CRUD operations plus mark-all-read and checker
-- DealNote creation now triggers notification to deal owner
-- All routes use auth pattern: getServerSession(authOptions) + (session.user as any).id
-- Zero new lint errors
-
----
-Task ID: 2
-Agent: Notification UI Agent
-Task: Build the Notification Panel UI and integrate it into the NavBar
-
-Work Log:
-- Created `/home/z/my-project/src/components/NotificationPanel.tsx` with full notification dropdown panel
-- Panel features: type-based icons (Calendar for meeting_reminder, CheckSquare for task_reminder, TrendingUp for deal_update, MessageSquare for deal_note, Bell for general), unread indicator (blue dot), relative time formatting, mark-as-read on click, mark-all-read button, delete button (visible on hover), empty state, auto-poll every 60s, click-outside-to-close
-- Also exported `useNotificationCount()` hook for unread count badge on bell icon
-- Updated NavBar (`/home/z/my-project/src/components/layout/NavBar.tsx`):
-  - Added imports for NotificationPanel and useNotificationCount
-  - Added `showNotifications` state and `bellRef` ref
-  - Added `useNotificationCount()` hook call for unread badge count
-  - Replaced static bell button with interactive button + unread count badge + NotificationPanel dropdown
-  - Badge shows count (capped at 99+) with destructive styling
-- Updated page.tsx (`/home/z/my-project/src/app/page.tsx`):
-  - Added notification check useEffect in AppContent (fires on mount and every 2 minutes)
-  - Calls `/api/notifications/check` to trigger meeting/task reminder generation
-- Fixed lint error: wrapped initial fetchNotifications/checkReminders calls in async `load()` function to avoid React Compiler "set-state-in-effect" error
-- Final lint check: 0 errors, 13 warnings (all pre-existing)
-
-Stage Summary:
-- NotificationPanel component fully functional with dropdown from bell icon in NavBar
-- Unread count badge displayed on bell icon with destructive styling
-- Click notification navigates to relevant page (deals, meetings, todo) and marks as read
-- Auto-polling: 60s in NotificationPanel, 120s global check in AppContent
-- Delete and mark-all-read functionality wired to backend APIs
-- Zero new lint errors
+- DealsPage now uses full DealDetail panel on deal click
+- Deal data is fetched with all relations (owner, company, contact, dealNotes)
 
 ---
 Task ID: 3
-Agent: Main Agent
-Task: Enhanced DealDetail with Updates section, final commit and push
+Agent: Main
+Task: Fix DealDetail bug line 96 (res.json() -> logRes.json())
 
 Work Log:
-- Rewrote DealDetail.tsx with prominent "Updates" tab as the primary section
-- Updates tab renamed from "Notes" — shows deal progress updates with timeline UI
-- Each update shows: user avatar, username, full date + relative time, and content in a card
-- Timeline connector lines between updates for visual flow
-- "Add Update" form with placeholder text about deal updates
-- Compact deal overview with 2-column grid layout
-- Deal header now shows title, stage badge, and amount inline
-- Ran build check — zero errors, all 34 routes compiled
-- Committed with descriptive message and pushed to GitHub
+- Found bug: fetchActivityLog() was reading res.json() instead of logRes.json() on line 96
+- This caused activity data to be parsed from the wrong response (deal data instead of activity data)
+- Fixed by changing `await res.json()` to `await logRes.json()`
 
 Stage Summary:
-- DealDetail now has prominent "Updates" section with timeline UI showing user + date
-- Notification system complete: backend (4 API routes) + frontend (bell dropdown + unread badge)
-- Meeting reminders trigger 15 minutes before start
-- Task reminders trigger based on reminderMinutes field
-- Deal note creation sends notification to deal owner
-- Zero build errors, pushed to GitHub successfully
+- Activity tab in DealDetail now correctly loads activity log data
 
 ---
-Task ID: 1
-Agent: Schema Fix Agent
-Task: Fix Prisma SQLite schema - resolve mysql/sqlite provider mismatch
+Task ID: 2
+Agent: Main
+Task: Fix Sidebar - toggleable on all screens + update NavBar & page.tsx layout
 
 Work Log:
-- Read current schema at `/home/z/my-project/prisma/schema.prisma` — found `provider = "mysql"` with SQLite DATABASE_URL
-- Read `.env` — confirmed `DATABASE_URL=file:/home/z/my-project/db/custom.db` (SQLite)
-- Changed `provider = "mysql"` to `provider = "sqlite"` in datasource block
-- Removed ALL `@db.*` attribute annotations from ALL models:
-  - Removed `@db.VarChar(N)` from 60+ fields across all models (Space, SpaceMember, User, Account, Session, VerificationToken, Deal, DealNote, Notification, Todo, Meeting, Prospect, Customer, Company, ActivityLog, VoipSettings, EmailSettings)
-  - Removed `@db.Text` from 20+ fields (description, notes, tags, address, image, logo, etc.)
-- Preserved all field types (String, Int, Float, Boolean, DateTime), all decorators (@id, @default, @unique, @relation, @@unique, @@index), and all comments
-- Verified zero `@db.` references remain in schema
-- Ran `npx prisma db push --force-reset` — successfully created SQLite database with all tables
-- Ran `npx prisma generate` — Prisma Client v6.19.2 regenerated successfully
-- Checked `src/libs/prisma.ts` and `src/lib/db.ts` — both use standard PrismaClient singleton pattern, no changes needed
-- Found `src/app/api/auth/signup/route.ts` was a stub returning 404 — rewrote with proper signup implementation using zod validation, bcryptjs password hashing, duplicate email check, and user creation with Active status
-- Appended work record to worklog.md
+- Rewrote SideBar.tsx to be fully overlay-based (always fixed, never takes layout space)
+- Added PanelLeft toggle button that appears when sidebar is closed
+- Added PanelLeftClose button inside sidebar to close it
+- Clicking any nav item now closes the sidebar after navigation
+- Backdrop overlay closes sidebar when clicked outside
+- Updated NavBar.tsx: removed "Soon" badge from Hiring button, changed Menu icon to PanelLeft
+- Updated page.tsx: added HiringPage import, removed ComingSoon, sidebar is now overlay-based
+- NavBar hamburger works on all screen sizes (not just mobile)
 
 Stage Summary:
-- Prisma schema provider changed from mysql to sqlite — matches DATABASE_URL
-- All @db.* attributes removed (SQLite doesn't support them)
-- SQLite database successfully created and synced at file:/home/z/my-project/db/custom.db
-- Prisma Client regenerated with sqlite provider
-- Signup API route now functional — creates users with hashed passwords
-- Zero @db.* attribute remnants in schema
-
----
-Task ID: 3-a
-Agent: Reminder Field Agent
-Task: Add "reminderMinutes" field to Todo form and API so users can set task reminders
-
-Work Log:
-- Updated `TaskData` interface in `/home/z/my-project/src/feature/todo/types/types.ts` — added `reminderMinutes?: number | null`
-- Updated POST `/api/todos` schema in `/home/z/my-project/src/app/api/todos/route.ts` — added `reminderMinutes: z.number().int().min(1).nullable().optional()` to `todoSchema`
-- Updated PATCH `/api/todos/[id]` in `/home/z/my-project/src/app/api/todos/[id]/route.ts`:
-  - Added zod import and `patchSchema` with strict validation including `reminderMinutes`
-  - Replaced raw body spread with `patchSchema.parse(body)` for type safety
-  - Added proper ZodError handling in PATCH catch block
-  - Properly handles `dueDate` null conversion
-- Updated TodoForm in `/home/z/my-project/src/feature/todo/components/TodoForm.tsx`:
-  - Added `reminderOptions` array with 8 options (No reminder, 5/10/15/30 min, 1/2 hours, 1 day)
-  - Added `reminderMinutes: z.string().optional()` to form zod schema (stored as string in form)
-  - Added `reminderMinutes: ""` to initial values
-  - Added `reminderMinutes` conversion in edit mode getInitialValues (number → string)
-  - Updated submitHandler to convert string reminderMinutes to number or null on submit
-  - Added Reminder dropdown (CustomDropdown) after Due Date field
-- Verified useTodoStore already passes `reminderMinutes` through in addTodo (spreads payload to API) — no changes needed
-- Updated TodoCard in `/home/z/my-project/src/feature/todo/components/TodoCard.tsx`:
-  - Added Bell icon import from lucide-react
-  - Added `formatReminder()` helper to display human-readable reminder text (e.g., "15 min before", "1 hour before", "1 day before")
-  - Added bell icon + reminder text next to due date when `task.reminderMinutes` is set (amber color `#B45309`)
-- Ran lint check — 0 errors, 13 warnings (all pre-existing)
-
-Stage Summary:
-- TaskData type now includes `reminderMinutes?: number | null`
-- POST and PATCH API routes validate `reminderMinutes` with zod (int, min 1, nullable, optional)
-- TodoForm has Reminder dropdown with 8 preset options after Due Date field
-- Form stores reminderMinutes as string, converts to number/null on submit
-- TodoCard displays bell icon with formatted reminder time next to due date
-- Prisma schema already had `reminderMinutes Int?` field (from previous agent work)
-- Zero new lint errors
-
----
-Task ID: 3-b
-Agent: Notification Enhancement Agent
-Task: Enhance notification system for deal updates and meeting reminders
-
-Work Log:
-- Enhanced `/api/deals/[id]/notes/route.ts` POST handler:
-  - Added logic to find all SpaceMembers with role "admin" or "manager" in the deal's space
-  - Creates `deal_update` type notifications for each admin/manager (excluding note author and deal owner who already got notified)
-  - Uses `notification.createMany()` for efficient batch creation
-- Enhanced `/api/notifications/check/route.ts`:
-  - Extended meeting check window: now also includes meetings that started within the last 30 minutes (currently happening), not just upcoming within 15 min
-  - Added "Meeting Now:" title and "has started" message for currently-happening meetings
-  - Added `task_due_today` notification type for tasks due today even without a specific reminderMinutes set
-  - Shortened duplicate check window from "today" (midnight) to last 2 hours for all notification types
-  - task_due_today checks avoid duplicates with task_reminder notifications on the same task
-- Added deal stage change notification in `/api/deals/[id]/route.ts` PATCH handler:
-  - Fetches existing deal before update to detect stage changes
-  - If stage field changed, creates `deal_update` notifications for deal owner (if not current user) and all space admins/managers (excluding current user and deal owner)
-  - Message format: "Deal 'X' moved to stage 'Y'"
-- Enhanced NotificationPanel (`/home/z/my-project/src/components/NotificationPanel.tsx`):
-  - Added browser toast notifications using sonner for unread notifications less than 5 minutes old when panel opens
-  - Added sound toggle button (Volume2/VolumeX icons) that plays a Web Audio API two-tone beep when enabled and new notifications arrive
-  - Added "Clear all" button (Trash2 icon) to delete all notifications at once
-  - Added `task_due_today` icon type (ClipboardList with orange color)
-  - Tracks previous notification IDs and panel open state to avoid re-showing toasts
-- Added DELETE `/api/notifications` route for bulk clearing all notifications for current user
-- Updated notification create zod schema to include "task_due_today" type
-- Updated Prisma schema Notification type comment to include task_due_today
-- Pushed schema to database — already in sync
-- Ran lint check — 0 errors, 13 warnings (all pre-existing)
-
-Stage Summary:
-- Deal note creation now notifies both the deal owner (deal_note type) and all space admins/managers (deal_update type)
-- Meeting reminder window expanded: now detects meetings starting within 15 min AND meetings currently happening (started within last 30 min)
-- New task_due_today notification type for tasks due today without specific reminderMinutes
-- Duplicate check window shortened from "today" to last 2 hours across all notification types
-- Deal stage changes now trigger deal_update notifications to owner and space admins/managers
-- NotificationPanel shows browser toasts for fresh unread notifications, plays beep sound (toggleable), and has Clear all button
-- New bulk DELETE endpoint at /api/notifications for clearing all notifications
-- Zero new lint errors
+- Sidebar is now toggleable on ALL screen sizes
+- Toggle button appears when sidebar is closed
+- Clicking a nav item closes sidebar after navigation
+- Hiring section now shows actual HiringPage instead of ComingSoon
 
 ---
 Task ID: 4
-Agent: Main Agent
-Task: Fix database issue - switch from SQLite back to MySQL for production
+Agent: Main
+Task: Fix Database - sync MySQL schema, add Hiring model, push to DB
 
 Work Log:
-- Diagnosed "Error code 14: Unable to open the database file" — caused by SQLite with absolute path not working on Vercel
-- Found original MySQL credentials from git history (afa64b1 commit)
-- Restored `provider = "mysql"` in prisma/schema.prisma
-- Re-added all `@db.VarChar()` and `@db.Text` annotations across all 17 models
-- Added new models (DealNote, Notification, VoipSettings) with proper MySQL annotations
-- Restored Hostinger MySQL DATABASE_URL in .env
-- Fixed .env parsing issue (Prisma CLI requires inline DATABASE_URL for special chars)
-- Ran `npx prisma db push` — database already in sync
-- Regenerated Prisma Client with MySQL provider
-- Seeded database: 8+ users, 2 spaces, deals, todos, meetings
-- Verified all API routes work with MySQL: signup, auth, providers
-- Build passes with ZERO errors (35 routes)
-- Lint: 0 errors, 13 warnings (all pre-existing)
-- Committed and pushed to GitHub
+- Prisma schema was already set to mysql provider with correct .env
+- Added Applicant model to prisma/schema.prisma with fields: fullName, email, phone, position, location, linkedin, portfolio, experience, education, skills, coverLetter, resumeUrl, voiceMessageUrl, videoUrl, status, source, notes, tags, spaceId, ownerId
+- Added Applicant relation to Space and User models
+- Ran DATABASE_URL="mysql://..." bun run db:push successfully - database is synced
+- Verified DB connection works with explicit DATABASE_URL
 
 Stage Summary:
-- Database switched from SQLite → MySQL (Hostinger: auth-db2122.hstgr.io:3306)
-- Prisma schema fully MySQL-compatible with @db.* annotations
-- All new models included (DealNote, Notification, VoipSettings)
-- Vercel deployment will work (MySQL is persistent, SQLite was ephemeral)
-- Zero build errors, zero lint errors
+- MySQL database synced with new Applicant model
+- All 15 models in schema (Space, SpaceMember, User, Account, Session, VerificationToken, Deal, DealNote, Notification, Todo, Meeting, Prospect, Customer, Company, ActivityLog, VoipSettings, EmailSettings, Applicant)
+
+---
+Task ID: 6
+Agent: Main
+Task: Build Hiring API routes (CRUD + public endpoint for careers form)
+
+Work Log:
+- Created /api/hiring/route.ts - GET (list with stats, filters) + POST (create applicant)
+- Created /api/hiring/[id]/route.ts - GET (single), PATCH (update), DELETE
+- GET supports spaceId, status filter, search
+- POST supports both authenticated and public (API key) submissions
+- Activity logging on create, update, delete
+- Created /api/careers/route.ts - public endpoint for website careers form
+  - Supports both JSON and FormData submissions
+  - CORS headers for elitepartnersus.com
+  - Maps all career form fields (full_name, whatsapp, city, field, expertise_level, etc.)
+  - Finds "Elite" space automatically
+  - Checks for duplicate emails
+  - Combines extra fields (age, current_status, expertise_level, english_level) into notes
+
+Stage Summary:
+- Full CRUD API for hiring/applicants
+- Public careers form endpoint with CORS support
+- Website form data maps directly to Applicant model
+
+---
+Task ID: 7
+Agent: Main
+Task: Build Hiring section frontend - cards with person names, detail modal
+
+Work Log:
+- Created /feature/hiring/components/HiringPage.tsx
+- Shows applicant cards in a responsive grid (1/2/3 columns)
+- Each card shows: name initial avatar, full name, position, email, phone, location, time ago, source badge, status badge
+- Clicking a card opens a detail Dialog with:
+  - Status change dropdown (New/Screening/Interview/Offer/Hired/Rejected)
+  - Contact info (email, phone, location, source)
+  - Links (LinkedIn, Portfolio)
+  - Media buttons (Resume, Voice Message, Video)
+  - Skills as badges
+  - Experience, Education, Cover Letter sections
+  - Internal notes textarea with auto-save on blur
+  - Delete button
+- Stats bar at top showing count per status
+- Search and status filter
+- Add Applicant dialog with full form
+- Responsive design for mobile and desktop
+
+Stage Summary:
+- Full Hiring section with cards, detail modal, CRUD, stats, search, filters
+- Mobile-friendly responsive design
+
+---
+Task ID: 8
+Agent: Main
+Task: Reset Html-elite repo
+
+Work Log:
+- Cloned Html-elite repo from GitHub
+- Reset to commit f1ca4dfc9364ca1dec445f75094f7663a1848058
+- Attempted to force-push but PAT (Michael-ctrl-eng) doesn't have access to Michael-Za org repo
+- This requires the user to either: add the PAT to the org, or manually reset from GitHub UI
+
+Stage Summary:
+- Local repo is reset to the correct commit
+- Force push failed due to org permissions - user needs to handle this
+
+---
+Task ID: 10
+Agent: Main
+Task: Build /api/careers endpoint for website-to-CRM integration
+
+Work Log:
+- Created /api/careers/route.ts with CORS support for elitepartnersus.com
+- Supports both JSON and FormData (multipart) submissions
+- Maps all career form field name variants
+- Handles voice notes and video URLs
+- Finds the Elite space automatically
+- Checks for duplicate emails (returns 409)
+- Creates Applicant records with source="website_form"
+
+Stage Summary:
+- Careers form on main website can POST to https://crm.elitepartnersus.com/api/careers
+- All career form data flows into the CRM Hiring section

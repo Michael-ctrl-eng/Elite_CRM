@@ -29,6 +29,7 @@ model Space {
   companies    Company[]
   activityLogs ActivityLog[]
   notifications Notification[]
+  applicants    Applicant[]
 }
 
 // ─── SPACE MEMBERSHIP ───
@@ -77,6 +78,7 @@ model User {
   activityLogs     ActivityLog[]
   emailSetting     EmailSettings?
   voipSetting      VoipSettings?
+  ownedApplicants  Applicant[]
   accounts         Account[]
   sessions         Session[]
 }
@@ -349,6 +351,40 @@ model VoipSettings {
   updatedAt    DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── APPLICANT (Hiring) ───
+
+model Applicant {
+  id              String   @id @default(cuid()) @db.VarChar(30)
+  fullName        String   @db.VarChar(255)
+  email           String?  @db.VarChar(255)
+  phone           String?  @db.VarChar(50)
+  position        String?  @db.VarChar(255)
+  location        String?  @db.VarChar(255)
+  linkedin        String?  @db.VarChar(255)
+  portfolio       String?  @db.VarChar(255)
+  experience      String?  @db.Text
+  education       String?  @db.Text
+  skills          String?  @db.Text
+  coverLetter     String?  @db.Text
+  resumeUrl       String?  @db.Text
+  voiceMessageUrl String?  @db.Text
+  videoUrl        String?  @db.Text
+  status          String   @default("New") @db.VarChar(30) // New | Screening | Interview | Offer | Hired | Rejected
+  source          String?  @db.VarChar(100) // website_form | manual | referral | linkedin
+  notes           String?  @db.Text
+  tags            String?  @db.Text
+  spaceId         String   @db.VarChar(30)
+  ownerId         String?  @db.VarChar(30)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  space Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  owner User?  @relation(fields: [ownerId], references: [id])
+
+  @@index([spaceId])
+  @@index([status])
 }
 
 // ─── EMAIL SETTINGS ───

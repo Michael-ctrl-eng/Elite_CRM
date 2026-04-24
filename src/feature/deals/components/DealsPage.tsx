@@ -8,7 +8,12 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 import { Plus, Search, Edit2, Trash2, ChevronLeft, ChevronRight, LayoutGrid, List } from "lucide-react"
+import dynamic from "next/dynamic"
+import { Deal } from "../types"
+
+const DealDetail = dynamic(() => import("./DealDetail"), { ssr: false })
 
 const STAGES = ["New", "Contacted", "Proposal", "Negotiation", "Won", "Lost"]
 const CURRENCIES = ["USD", "EUR", "GBP"]
@@ -32,7 +37,9 @@ export default function DealsPage() {
   const [search, setSearch] = useState("")
   const [stageFilter, setStageFilter] = useState("all")
   const [showCreate, setShowCreate] = useState(false)
+  const [selectedDeal, setSelectedDeal] = useState<any>(null)
   const [editDeal, setEditDeal] = useState<any>(null)
+  const [deletingDeal, setDeletingDeal] = useState<string | null>(null)
   const [form, setForm] = useState({ title: "", value: "", currency: "USD", stage: "New", description: "", source: "", probability: "", closeDate: "" })
   const [viewMode, setViewMode] = useState<"pipeline" | "list">("pipeline")
   const [mobileStageIndex, setMobileStageIndex] = useState(0)
@@ -62,9 +69,29 @@ export default function DealsPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this deal?")) return
-    await fetch(`/api/deals/${id}`, { method: "DELETE" })
-    fetchData()
+    setDeletingDeal(id)
+    try {
+      await fetch(`/api/deals/${id}`, { method: "DELETE" })
+      setSelectedDeal(null)
+      fetchData()
+    } finally {
+      setDeletingDeal(null)
+    }
+  }
+
+  const handleDealClick = async (deal: any) => {
+    // Fetch full deal details with relations
+    try {
+      const res = await fetch(`/api/deals/${deal.id}`)
+      if (res.ok) {
+        const fullDeal = await res.json()
+        setSelectedDeal(fullDeal)
+      } else {
+        setSelectedDeal(deal)
+      }
+    } catch {
+      setSelectedDeal(deal)
+    }
   }
 
   const getCurrencySymbol = (currency?: string) => {
@@ -138,6 +165,7 @@ export default function DealsPage() {
                   </Select>
                   <Input placeholder="Probability %" type="number" value={form.probability} onChange={e => setForm({ ...form, probability: e.target.value })} />
                 </div>
+                <Textarea placeholder="Description (optional)" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
                 <Input placeholder="Source" value={form.source} onChange={e => setForm({ ...form, source: e.target.value })} />
                 <Input placeholder="Close Date" type="date" value={form.closeDate} onChange={e => setForm({ ...form, closeDate: e.target.value })} />
                 <Button onClick={handleCreate} className="w-full" disabled={!form.title}>Create Deal</Button>
@@ -217,7 +245,7 @@ export default function DealsPage() {
             </div>
           )}
           {dealsByStage[currentMobileStage]?.map((deal: any) => (
-            <Card key={deal.id} className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98]" onClick={() => setEditDeal(deal)}>
+            <Card key={deal.id} className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98]" onClick={() => handleDealClick(deal)}>
               <CardContent className="p-3 sm:p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
@@ -254,7 +282,7 @@ export default function DealsPage() {
                 <div className="text-xs text-muted-foreground mb-2">${totalValue.toLocaleString()}</div>
                 <div className="space-y-2">
                   {stageDeals.map((deal: any) => (
-                    <Card key={deal.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setEditDeal(deal)}>
+                    <Card key={deal.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleDealClick(deal)}>
                       <CardContent className="p-3">
                         <p className="text-sm font-medium truncate">{deal.title}</p>
                         <p className="text-lg font-bold mt-1">{getCurrencySymbol(deal.currency)}{(deal.value || 0).toLocaleString()}</p>
@@ -291,7 +319,7 @@ export default function DealsPage() {
               </thead>
               <tbody>
                 {filtered.map((deal: any) => (
-                  <tr key={deal.id} className="border-t border-border hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setEditDeal(deal)}>
+                  <tr key={deal.id} className="border-t border-border hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => handleDealClick(deal)}>
                     <td className="p-3">
                       <p className="font-medium">{deal.title}</p>
                       {deal.company?.name && <p className="text-xs text-muted-foreground">{deal.company.name}</p>}
@@ -305,7 +333,7 @@ export default function DealsPage() {
                     <td className="p-3 text-muted-foreground">{deal.closeDate ? new Date(deal.closeDate).toLocaleDateString() : "—"}</td>
                     <td className="p-3 text-right">
                       <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => setEditDeal(deal)} className="p-1.5 rounded hover:bg-accent transition-colors"><Edit2 size={14} className="text-muted-foreground" /></button>
+                        <button onClick={() => { setEditDeal(deal); setSelectedDeal(null) }} className="p-1.5 rounded hover:bg-accent transition-colors"><Edit2 size={14} className="text-muted-foreground" /></button>
                         <button onClick={() => handleDelete(deal.id)} className="p-1.5 rounded hover:bg-destructive/10 transition-colors"><Trash2 size={14} className="text-destructive" /></button>
                       </div>
                     </td>
@@ -320,23 +348,45 @@ export default function DealsPage() {
         </div>
       )}
 
-      {/* Edit Dialog */}
+      {/* ─── Deal Detail Panel ─── */}
+      <DealDetail
+        isOpen={!!selectedDeal}
+        deal={selectedDeal}
+        onClose={() => setSelectedDeal(null)}
+        onDelete={handleDelete}
+        onEdit={(deal) => { setEditDeal(deal); setSelectedDeal(null) }}
+        onAddNotes={(id) => {}}
+        onExport={(id) => {}}
+        isDeleting={!!deletingDeal}
+      />
+
+      {/* ─── Edit Deal Dialog ─── */}
       <Dialog open={!!editDeal} onOpenChange={() => setEditDeal(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Deal</DialogTitle></DialogHeader>
           {editDeal && (
             <div className="space-y-3">
-              <Input value={editDeal.title} onChange={e => setEditDeal({ ...editDeal, title: e.target.value })} />
+              <Input value={editDeal.title} onChange={e => setEditDeal({ ...editDeal, title: e.target.value })} placeholder="Deal Title" />
               <div className="grid grid-cols-2 gap-3">
                 <Input type="number" value={editDeal.value || ""} onChange={e => setEditDeal({ ...editDeal, value: e.target.value ? parseFloat(e.target.value) : null })} placeholder="Value" />
+                <Select value={editDeal.currency || "USD"} onValueChange={v => setEditDeal({ ...editDeal, currency: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <Select value={editDeal.stage} onValueChange={v => setEditDeal({ ...editDeal, stage: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{STAGES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                 </Select>
+                <Input value={editDeal.probability ?? ""} onChange={e => setEditDeal({ ...editDeal, probability: e.target.value ? parseInt(e.target.value) : null })} placeholder="Probability %" />
               </div>
-              <Input value={editDeal.probability ?? ""} onChange={e => setEditDeal({ ...editDeal, probability: e.target.value ? parseInt(e.target.value) : null })} placeholder="Probability %" />
+              <Textarea value={editDeal.description || ""} onChange={e => setEditDeal({ ...editDeal, description: e.target.value })} placeholder="Description" />
+              <Input value={editDeal.source || ""} onChange={e => setEditDeal({ ...editDeal, source: e.target.value })} placeholder="Source" />
+              <Input type="date" value={editDeal.closeDate ? new Date(editDeal.closeDate).toISOString().split("T")[0] : ""} onChange={e => setEditDeal({ ...editDeal, closeDate: e.target.value || null })} placeholder="Close Date" />
               <div className="flex gap-2">
                 <Button onClick={() => handleUpdate(editDeal.id, editDeal)} className="flex-1">Save</Button>
+                <Button variant="outline" onClick={() => setEditDeal(null)}>Cancel</Button>
                 <Button variant="destructive" onClick={() => { handleDelete(editDeal.id); setEditDeal(null) }}><Trash2 size={14} /></Button>
               </div>
             </div>

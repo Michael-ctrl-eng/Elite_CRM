@@ -93,7 +93,7 @@ export default function DealDetail({
         const spaceId = dealData.spaceId;
         const logRes = await fetch(`/api/activity?spaceId=${spaceId}&entityId=${dealId}&limit=20`);
         if (logRes.ok) {
-          const logData = await res.json();
+          const logData = await logRes.json();
           setActivityLog(Array.isArray(logData) ? logData : []);
         } else {
           setActivityLog([]);

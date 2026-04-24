@@ -39,9 +39,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const existing = await db.applicant.findUnique({ where: { id } })
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
+    // Only allow updating specific fields
+    const allowedFields = ["fullName", "email", "phone", "position", "location",
+      "linkedin", "portfolio", "experience", "education", "skills", "coverLetter",
+      "resumeUrl", "voiceMessageUrl", "videoUrl", "status", "source", "notes", "tags", "ownerId"]
+    const updateData: Record<string, any> = {}
+    for (const key of allowedFields) {
+      if (body[key] !== undefined) updateData[key] = body[key]
+    }
+
     const applicant = await db.applicant.update({
       where: { id },
-      data: body,
+      data: updateData,
       include: {
         owner: { select: { id: true, name: true, email: true, image: true } },
       },

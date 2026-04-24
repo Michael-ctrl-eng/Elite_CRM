@@ -1,37 +1,65 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 
-// CORS headers - allow the main website to submit
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "https://elitepartnersus.com",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, X-API-Key",
+// Allowed origins for CORS
+const ALLOWED_ORIGINS = [
+  "https://elitepartnersus.com",
+  "https://www.elitepartnersus.com",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://localhost:3001",
+]
+
+function getCorsHeaders(origin: string | null) {
+  // Allow any Vercel preview deployment or known production domains
+  const isAllowed = origin && (
+    ALLOWED_ORIGINS.includes(origin) ||
+    origin.endsWith(".vercel.app") ||
+    origin.endsWith(".elitepartnersus.com")
+  )
+  const allowOrigin = isAllowed ? origin : ALLOWED_ORIGINS[1] // default to www
+  return {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, X-API-Key",
+  }
 }
 
 // Handle CORS preflight
-export async function OPTIONS() {
-  return new NextResponse(null, { status: 200, headers: corsHeaders })
+export async function OPTIONS(req: NextRequest) {
+  const origin = req.headers.get("origin")
+  return new NextResponse(null, { status: 200, headers: getCorsHeaders(origin) })
 }
 
 // POST /api/careers — Public endpoint for the website careers form
 // Supports both JSON and FormData
 export async function POST(req: NextRequest) {
+  const origin = req.headers.get("origin")
+  const cors = getCorsHeaders(origin)
+
   try {
     const contentType = req.headers.get("content-type") || ""
     let body: Record<string, any>
 
     if (contentType.includes("multipart/form-data") || contentType.includes("application/x-www-form-urlencoded")) {
-      // Parse as FormData
+      // Parse as FormData — collect duplicate keys (like checkboxes) as arrays
       const formData = await req.formData()
       body = {}
       formData.forEach((value, key) => {
-        // Skip File objects for now (we store URLs, not files)
-        if (typeof value === "string") {
+        if (value instanceof File) {
+          // Skip file blobs — store only the name for now
+          if (value.size > 0) body[key] = value.name || null
+          return
+        }
+        // Handle duplicate keys (e.g. skills checkboxes): collect into arrays
+        if (body[key] !== undefined) {
+          if (Array.isArray(body[key])) {
+            body[key].push(value)
+          } else {
+            body[key] = [body[key], value]
+          }
+        } else {
           body[key] = value
-        } else if (value instanceof File) {
-          // For voice notes - convert to base64 or skip
-          // We'll store these as URLs in production; for now skip file blobs
-          body[key] = value.name || null
         }
       })
     } else {
@@ -48,7 +76,7 @@ export async function POST(req: NextRequest) {
     const linkedin = body.linkedin
     const education = body.education
     const experience = body.experience || body.work_experience
-    const skills = Array.isArray(body.skills) ? body.skills.join(", ") : (body.other_skills || body.skills || "")
+    const skills = Array.isArray(body.skills) ? body.skills.join(", ") : (body.skills || "")
     const coverLetter = body.notes || body.cover_message || body.coverLetter
     const videoUrl = body.videoUrl || body.video_url
     const voiceMessageUrl = body.voiceNoteUrl || body.voice_note_url || null
@@ -61,7 +89,7 @@ export async function POST(req: NextRequest) {
     if (!fullName || !email) {
       return NextResponse.json(
         { success: false, error: "Name and email are required" },
-        { status: 400, headers: corsHeaders }
+        { status: 400, headers: cors }
       )
     }
 
@@ -73,7 +101,7 @@ export async function POST(req: NextRequest) {
     if (existing) {
       return NextResponse.json(
         { success: false, error: "This email has already submitted an application." },
-        { status: 409, headers: corsHeaders }
+        { status: 409, headers: cors }
       )
     }
 
@@ -95,7 +123,7 @@ export async function POST(req: NextRequest) {
       if (!firstSpace) {
         return NextResponse.json(
           { success: false, error: "No workspace found. Please set up the CRM first." },
-          { status: 500, headers: corsHeaders }
+          { status: 500, headers: cors }
         )
       }
       targetSpaceId = firstSpace.id
@@ -135,13 +163,13 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(
       { success: true, id: applicant.id },
-      { status: 200, headers: corsHeaders }
+      { status: 200, headers: cors }
     )
   } catch (err) {
     console.error("Careers API error:", err)
     return NextResponse.json(
       { success: false, error: "Internal server error. Please try again." },
-      { status: 500, headers: corsHeaders }
+      { status: 500, headers: cors }
     )
   }
 }

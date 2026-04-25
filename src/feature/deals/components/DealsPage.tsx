@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Search, Edit2, Trash2, ChevronLeft, ChevronRight, LayoutGrid, List, Globe, Linkedin, Building2, Users, Mail, Phone, ExternalLink } from "lucide-react"
+import { Icon } from "@iconify/react"
 import dynamic from "next/dynamic"
 import { Deal } from "../types"
 
@@ -38,6 +38,15 @@ const defaultForm = {
   websiteUrl: "", linkedInUrl: "", industry: "", companySize: "", dealEmail: "", dealPhone: "", mainParticipantId: "", participantIds: [] as string[],
 }
 
+/** Get initials for avatar */
+function getInitials(name?: string | null): string {
+  if (!name) return "?"
+  const parts = name.trim().split(/\s+/)
+  return parts.length >= 2
+    ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    : name.slice(0, 2).toUpperCase()
+}
+
 export default function DealsPage() {
   const spaceId = useCurrentSpace()
   const [deals, setDeals] = useState<any[]>([])
@@ -49,10 +58,11 @@ export default function DealsPage() {
   const [editDeal, setEditDeal] = useState<any>(null)
   const [deletingDeal, setDeletingDeal] = useState<string | null>(null)
   const [form, setForm] = useState(defaultForm)
-  const [viewMode, setViewMode] = useState<"pipeline" | "list">("pipeline")
+  const [viewMode, setViewMode] = useState<"grid" | "pipeline" | "list">("grid")
   const [mobileStageIndex, setMobileStageIndex] = useState(0)
   const [spaceMembers, setSpaceMembers] = useState<any[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const submitGuardRef = useRef(false)
   const createBtnRef = useRef<HTMLButtonElement>(null)
 
   const fetchData = useCallback(() => {
@@ -73,7 +83,9 @@ export default function DealsPage() {
   useEffect(() => { if (showCreate) fetchSpaceMembers() }, [showCreate, fetchSpaceMembers])
 
   const handleCreate = async () => {
-    if (submitting || !form.title) return
+    // Guard against double submission using both state and ref
+    if (submitting || submitGuardRef.current || !form.title) return
+    submitGuardRef.current = true
     setSubmitting(true)
     try {
       const res = await fetch("/api/deals", {
@@ -94,6 +106,7 @@ export default function DealsPage() {
       }
     } finally {
       setSubmitting(false)
+      submitGuardRef.current = false
     }
   }
 
@@ -160,11 +173,22 @@ export default function DealsPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      {/* Page Header */}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/20">
+          <Icon icon="mdi:handshake-outline" width={22} className="text-emerald-600 dark:text-emerald-400" />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold text-foreground">Deals</h1>
+          <p className="text-sm text-muted-foreground">Track and manage your sales pipeline</p>
+        </div>
+      </div>
+
       {/* Header Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Icon icon="mdi:magnify" width={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input placeholder="Search deals..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 w-full sm:w-64" />
           </div>
           <Select value={stageFilter} onValueChange={setStageFilter}>
@@ -177,16 +201,19 @@ export default function DealsPage() {
         </div>
         <div className="flex items-center gap-2">
           <div className="hidden md:flex items-center border border-border rounded-lg p-0.5">
+            <button onClick={() => setViewMode("grid")} className={`p-1.5 rounded-md transition-colors ${viewMode === "grid" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+              <Icon icon="mdi:view-grid-outline" width={16} />
+            </button>
             <button onClick={() => setViewMode("pipeline")} className={`p-1.5 rounded-md transition-colors ${viewMode === "pipeline" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-              <LayoutGrid size={16} />
+              <Icon icon="mdi:view-column-outline" width={16} />
             </button>
             <button onClick={() => setViewMode("list")} className={`p-1.5 rounded-md transition-colors ${viewMode === "list" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-              <List size={16} />
+              <Icon icon="mdi:view-list-outline" width={16} />
             </button>
           </div>
           <Dialog open={showCreate} onOpenChange={setShowCreate}>
             <DialogTrigger asChild>
-              <Button className="w-full sm:w-auto"><Plus size={14} /> Add Deal</Button>
+              <Button className="w-full sm:w-auto gap-1.5"><Icon icon="mdi:plus" width={14} /> Add Deal</Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle>Create Deal</DialogTitle></DialogHeader>
@@ -214,7 +241,7 @@ export default function DealsPage() {
                 {/* Divider */}
                 <div className="border-t border-border pt-3">
                   <h4 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
-                    <Globe size={14} /> Company Details
+                    <Icon icon="mdi:web" width={14} /> Company Details
                   </h4>
                 </div>
                 <Input placeholder="Website URL" value={form.websiteUrl} onChange={e => setForm({ ...form, websiteUrl: e.target.value })} />
@@ -239,7 +266,7 @@ export default function DealsPage() {
                 {/* Contact Info */}
                 <div className="border-t border-border pt-3">
                   <h4 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
-                    <Mail size={14} /> Contact Info
+                    <Icon icon="mdi:email-outline" width={14} /> Contact Info
                   </h4>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -250,7 +277,7 @@ export default function DealsPage() {
                 {/* Participants */}
                 <div className="border-t border-border pt-3">
                   <h4 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
-                    <Users size={14} /> Participants
+                    <Icon icon="mdi:account-group-outline" width={14} /> Participants
                   </h4>
                 </div>
                 <div>
@@ -299,25 +326,241 @@ export default function DealsPage() {
         </div>
       </div>
 
+      {/* Stage Filter Pills */}
+      <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-none">
+        <button
+          onClick={() => setStageFilter("all")}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors border ${
+            stageFilter === "all"
+              ? "bg-foreground text-background border-foreground"
+              : "bg-muted/50 text-muted-foreground border-border hover:border-foreground/20"
+          }`}
+        >
+          All
+          <span className="opacity-70">({filtered.length})</span>
+        </button>
+        {STAGES.map(stage => {
+          const count = dealsByStage[stage]?.length || 0
+          return (
+            <button key={stage} onClick={() => setStageFilter(stage)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors border ${
+                stageFilter === stage
+                  ? `${stageBadgeColors[stage]} border-current/20`
+                  : "bg-muted/50 text-muted-foreground border-border hover:border-foreground/20"
+              }`}>
+              <div className={`w-1.5 h-1.5 rounded-full ${stageColors[stage]}`} />
+              {stage}
+              <span className="opacity-70">({count})</span>
+            </button>
+          )
+        })}
+      </div>
+
       {/* Stats Bar */}
       {stats && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-          <div className="px-3 py-2 rounded-lg bg-muted/50 text-center">
-            <p className="text-xs text-muted-foreground">Total Deals</p>
+          <div className="px-3 py-3 rounded-lg bg-muted/50 text-center border border-border/50 hover:border-border transition-colors">
+            <div className="flex items-center justify-center gap-1.5 mb-1">
+              <Icon icon="mdi:handshake-outline" width={14} className="text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">Total Deals</p>
+            </div>
             <p className="text-lg font-bold">{stats.total || 0}</p>
           </div>
-          <div className="px-3 py-2 rounded-lg bg-muted/50 text-center">
-            <p className="text-xs text-muted-foreground">Win Rate</p>
+          <div className="px-3 py-3 rounded-lg bg-muted/50 text-center border border-border/50 hover:border-border transition-colors">
+            <div className="flex items-center justify-center gap-1.5 mb-1">
+              <Icon icon="mdi:trophy-outline" width={14} className="text-amber-500" />
+              <p className="text-xs text-muted-foreground">Win Rate</p>
+            </div>
             <p className="text-lg font-bold">{stats.winRate || 0}%</p>
           </div>
-          <div className="px-3 py-2 rounded-lg bg-muted/50 text-center">
-            <p className="text-xs text-muted-foreground">Total Value</p>
+          <div className="px-3 py-3 rounded-lg bg-muted/50 text-center border border-border/50 hover:border-border transition-colors">
+            <div className="flex items-center justify-center gap-1.5 mb-1">
+              <Icon icon="mdi:chart-line" width={14} className="text-emerald-500" />
+              <p className="text-xs text-muted-foreground">Total Value</p>
+            </div>
             <p className="text-lg font-bold">${(stats.totalValue || 0).toLocaleString()}</p>
           </div>
-          <div className="px-3 py-2 rounded-lg bg-muted/50 text-center">
-            <p className="text-xs text-muted-foreground">Active</p>
+          <div className="px-3 py-3 rounded-lg bg-muted/50 text-center border border-border/50 hover:border-border transition-colors">
+            <div className="flex items-center justify-center gap-1.5 mb-1">
+              <Icon icon="mdi:chart-timeline-variant" width={14} className="text-blue-500" />
+              <p className="text-xs text-muted-foreground">Active</p>
+            </div>
             <p className="text-lg font-bold">{stats.active || 0}</p>
           </div>
+        </div>
+      )}
+
+      {/* ─── GRID VIEW (DEFAULT) ─── */}
+      {viewMode === "grid" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filtered.length === 0 && (
+            <div className="col-span-full text-center py-16 text-muted-foreground">
+              <Icon icon="mdi:handshake-outline" width={48} className="mx-auto mb-3 opacity-30" />
+              <p className="text-sm">No deals found</p>
+              <p className="text-xs mt-1">Create a deal to get started</p>
+            </div>
+          )}
+          {filtered.map((deal: any) => {
+            const ownerName = deal.owner?.name || deal.owner?.email || "Unassigned"
+            const ownerImage = deal.owner?.image
+            const participantName = deal.mainParticipant?.name || deal.mainParticipant?.email
+            const participantImage = deal.mainParticipant?.image
+
+            return (
+              <Card
+                key={deal.id}
+                className="group relative cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 border border-border/60 overflow-hidden"
+                onClick={() => handleDealClick(deal)}
+              >
+                <CardContent className="p-0">
+                  {/* Top: Title + Stage Badge */}
+                  <div className="flex items-start justify-between gap-2 p-4 pb-2">
+                    <h3 className="text-sm font-semibold text-foreground truncate flex-1 min-w-0">{deal.title}</h3>
+                    <span className={`shrink-0 px-2 py-0.5 rounded text-[11px] font-semibold ${stageBadgeColors[deal.stage] || "bg-muted text-muted-foreground"}`}>
+                      {deal.stage}
+                    </span>
+                  </div>
+
+                  {/* Middle: Value + Probability */}
+                  <div className="px-4 pb-2">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-bold text-foreground tracking-tight">
+                        {getCurrencySymbol(deal.currency)}{(deal.value || 0).toLocaleString()}
+                      </span>
+                      {deal.probability != null && (
+                        <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+                          <Icon icon="mdi:percent-outline" width={12} />
+                          {deal.probability}%
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Industry + Company Size */}
+                  <div className="px-4 pb-2">
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      {deal.industry && (
+                        <span className="flex items-center gap-1">
+                          <Icon icon="mdi:office-building-outline" width={13} className="text-muted-foreground/70" />
+                          {deal.industry}
+                        </span>
+                      )}
+                      {deal.companySize && (
+                        <span className="flex items-center gap-1">
+                          <Icon icon="mdi:account-group-outline" width={13} className="text-muted-foreground/70" />
+                          {deal.companySize}
+                        </span>
+                      )}
+                      {!deal.industry && !deal.companySize && (
+                        <span className="text-muted-foreground/50">No company details</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Links & Contact Row */}
+                  <div className="px-4 pb-2 space-y-1">
+                    {deal.websiteUrl && (
+                      <a
+                        href={deal.websiteUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        className="flex items-center gap-1.5 text-xs text-blue-500 hover:text-blue-600 hover:underline transition-colors w-fit"
+                      >
+                        <Icon icon="mdi:web" width={12} />
+                        <span className="truncate max-w-[200px]">{deal.websiteUrl.replace(/^https?:\/\//, '')}</span>
+                        <Icon icon="mdi:open-in-new" width={10} className="opacity-60" />
+                      </a>
+                    )}
+                    {deal.linkedInUrl && (
+                      <a
+                        href={deal.linkedInUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        className="flex items-center gap-1.5 text-xs text-blue-500 hover:text-blue-600 hover:underline transition-colors w-fit"
+                      >
+                        <Icon icon="mdi:linkedin" width={12} />
+                        <span className="truncate max-w-[200px]">LinkedIn</span>
+                        <Icon icon="mdi:open-in-new" width={10} className="opacity-60" />
+                      </a>
+                    )}
+                    {deal.dealEmail && (
+                      <a
+                        href={`mailto:${deal.dealEmail}`}
+                        onClick={e => e.stopPropagation()}
+                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-fit"
+                      >
+                        <Icon icon="mdi:email-outline" width={12} />
+                        <span className="truncate max-w-[200px]">{deal.dealEmail}</span>
+                      </a>
+                    )}
+                    {deal.dealPhone && (
+                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Icon icon="mdi:phone-outline" width={12} />
+                        {deal.dealPhone}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Bottom: Owner + Close Date + Participant */}
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-muted/30 border-t border-border/40">
+                    <div className="flex items-center gap-2">
+                      {/* Owner Avatar */}
+                      {ownerImage ? (
+                        <img src={ownerImage} alt={ownerName} className="w-6 h-6 rounded-full object-cover ring-1 ring-border" />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center ring-1 ring-border">
+                          <span className="text-[10px] font-semibold text-accent-foreground">{getInitials(ownerName)}</span>
+                        </div>
+                      )}
+                      <span className="text-xs text-muted-foreground truncate max-w-[100px]">{ownerName}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {/* Main Participant */}
+                      {participantName && (
+                        <div className="flex items-center gap-1">
+                          {participantImage ? (
+                            <img src={participantImage} alt={participantName} className="w-4 h-4 rounded-full object-cover" />
+                          ) : (
+                            <div className="w-4 h-4 rounded-full bg-muted flex items-center justify-center">
+                              <span className="text-[8px] font-semibold text-muted-foreground">{getInitials(participantName)}</span>
+                            </div>
+                          )}
+                          <span className="text-[10px] text-muted-foreground/70 hidden sm:inline truncate max-w-[60px]">{participantName}</span>
+                        </div>
+                      )}
+                      {/* Close Date */}
+                      {deal.closeDate && (
+                        <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                          <Icon icon="mdi:calendar-outline" width={11} />
+                          {new Date(deal.closeDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Quick Action Buttons (visible on hover) */}
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1" onClick={e => e.stopPropagation()}>
+                    <button
+                      onClick={() => { setEditDeal(deal); setSelectedDeal(null) }}
+                      className="p-1.5 rounded-md bg-background/90 backdrop-blur-sm border border-border/60 shadow-sm hover:bg-accent transition-colors"
+                      title="Edit"
+                    >
+                      <Icon icon="mdi:pencil-outline" width={13} className="text-muted-foreground" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(deal.id)}
+                      className="p-1.5 rounded-md bg-background/90 backdrop-blur-sm border border-border/60 shadow-sm hover:bg-destructive/10 transition-colors"
+                      title="Delete"
+                    >
+                      <Icon icon="mdi:delete-outline" width={13} className="text-destructive" />
+                    </button>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       )}
 
@@ -337,13 +580,17 @@ export default function DealsPage() {
           })}
         </div>
         <div className="flex items-center justify-between mb-2">
-          <button onClick={() => setMobileStageIndex(Math.max(0, mobileStageIndex - 1))} disabled={mobileStageIndex === 0} className="p-1.5 rounded-lg hover:bg-accent disabled:opacity-30 transition-colors"><ChevronLeft size={18} /></button>
+          <button onClick={() => setMobileStageIndex(Math.max(0, mobileStageIndex - 1))} disabled={mobileStageIndex === 0} className="p-1.5 rounded-lg hover:bg-accent disabled:opacity-30 transition-colors">
+            <Icon icon="mdi:chevron-left" width={18} />
+          </button>
           <div className="flex items-center gap-2">
             <div className={`w-2.5 h-2.5 rounded-full ${stageColors[currentMobileStage]}`} />
             <span className="text-sm font-semibold">{currentMobileStage}</span>
             <span className="text-xs text-muted-foreground">${dealsByStage[currentMobileStage]?.reduce((sum: number, d: any) => sum + (d.value || 0), 0).toLocaleString() || 0}</span>
           </div>
-          <button onClick={() => setMobileStageIndex(Math.min(STAGES.length - 1, mobileStageIndex + 1))} disabled={mobileStageIndex === STAGES.length - 1} className="p-1.5 rounded-lg hover:bg-accent disabled:opacity-30 transition-colors"><ChevronRight size={18} /></button>
+          <button onClick={() => setMobileStageIndex(Math.min(STAGES.length - 1, mobileStageIndex + 1))} disabled={mobileStageIndex === STAGES.length - 1} className="p-1.5 rounded-lg hover:bg-accent disabled:opacity-30 transition-colors">
+            <Icon icon="mdi:chevron-right" width={18} />
+          </button>
         </div>
         <div className="space-y-2">
           {dealsByStage[currentMobileStage]?.length === 0 && (
@@ -430,7 +677,7 @@ export default function DealsPage() {
                       {deal.company?.name && <p className="text-xs text-muted-foreground">{deal.company.name}</p>}
                       {deal.websiteUrl && (
                         <a href={deal.websiteUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-xs text-blue-500 hover:underline flex items-center gap-1 mt-0.5">
-                          <Globe size={10} /> Website
+                          <Icon icon="mdi:web" width={10} /> Website
                         </a>
                       )}
                     </td>
@@ -444,8 +691,8 @@ export default function DealsPage() {
                     <td className="p-3 text-muted-foreground">{deal.closeDate ? new Date(deal.closeDate).toLocaleDateString() : "—"}</td>
                     <td className="p-3 text-right">
                       <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => { setEditDeal(deal); setSelectedDeal(null) }} className="p-1.5 rounded hover:bg-accent transition-colors"><Edit2 size={14} className="text-muted-foreground" /></button>
-                        <button onClick={() => handleDelete(deal.id)} className="p-1.5 rounded hover:bg-destructive/10 transition-colors"><Trash2 size={14} className="text-destructive" /></button>
+                        <button onClick={() => { setEditDeal(deal); setSelectedDeal(null) }} className="p-1.5 rounded hover:bg-accent transition-colors"><Icon icon="mdi:pencil-outline" width={14} className="text-muted-foreground" /></button>
+                        <button onClick={() => handleDelete(deal.id)} className="p-1.5 rounded hover:bg-destructive/10 transition-colors"><Icon icon="mdi:delete-outline" width={14} className="text-destructive" /></button>
                       </div>
                     </td>
                   </tr>
@@ -527,7 +774,7 @@ export default function DealsPage() {
               <div className="flex gap-2 pt-2">
                 <Button onClick={() => handleUpdate(editDeal.id, editDeal)} className="flex-1">Save</Button>
                 <Button variant="outline" onClick={() => setEditDeal(null)}>Cancel</Button>
-                <Button variant="destructive" onClick={() => { handleDelete(editDeal.id); setEditDeal(null) }}><Trash2 size={14} /></Button>
+                <Button variant="destructive" onClick={() => { handleDelete(editDeal.id); setEditDeal(null) }}><Icon icon="mdi:delete-outline" width={14} /></Button>
               </div>
             </div>
           )}

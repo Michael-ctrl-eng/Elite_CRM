@@ -63,6 +63,28 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       },
     })
 
+    // Sync to Todo if assigneeId is provided
+    if (data.assigneeId) {
+      try {
+        await db.todo.create({
+          data: {
+            title: data.title,
+            description: data.description || `Task from deal: ${deal.title}`,
+            status: "Todo",
+            priority: "Medium",
+            dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
+            linkedTo: `deal:${id}`,
+            assignedToId: data.assigneeId,
+            spaceId: deal.spaceId,
+            ownerId: userId,
+          }
+        })
+      } catch (todoError) {
+        console.error("Failed to sync deal task to todo:", todoError)
+        // Don't fail the main request if todo sync fails
+      }
+    }
+
     return NextResponse.json(task, { status: 201 })
   } catch (error: any) {
     if (error instanceof z.ZodError) return NextResponse.json({ error: error.errors[0].message }, { status: 422 })

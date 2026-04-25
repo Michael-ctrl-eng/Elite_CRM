@@ -22,6 +22,7 @@ export async function GET() {
       return NextResponse.json({
         sipServer: "",
         sipPort: "5060",
+        wsPort: "8089",
         sipUsername: "",
         sipPassword: "",
         sipDomain: "",
@@ -61,6 +62,7 @@ export async function POST(req: NextRequest) {
     const {
       sipServer,
       sipPort,
+      wsPort,
       sipUsername,
       sipPassword,
       sipDomain,
@@ -77,6 +79,7 @@ export async function POST(req: NextRequest) {
     const data: any = {
       sipServer: sipServer || "",
       sipPort: sipPort || "5060",
+      wsPort: wsPort || "8089",
       sipUsername: sipUsername || "",
       sipDomain: sipDomain || "",
       stunServer: stunServer || "stun:stun.l.google.com:19302",

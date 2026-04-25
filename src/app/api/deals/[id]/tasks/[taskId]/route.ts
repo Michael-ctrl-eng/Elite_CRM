@@ -29,6 +29,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       },
     })
 
+    // Sync todo status when task completion is toggled
+    if (updatedTask.assigneeId) {
+      try {
+        await db.todo.updateMany({
+          where: {
+            assignedToId: updatedTask.assigneeId,
+            linkedTo: `deal:${id}`,
+            title: updatedTask.title,
+          },
+          data: { status: updatedTask.completed ? "Done" : "Todo" }
+        })
+      } catch (todoError) {
+        console.error("Failed to sync deal task status to todo:", todoError)
+      }
+    }
+
     return NextResponse.json(updatedTask)
   } catch (error) {
     console.error("Task PATCH:", error)
@@ -45,6 +61,21 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     const task = await db.dealTask.findFirst({ where: { id: taskId, dealId: id } })
     if (!task) return NextResponse.json({ error: "Task not found" }, { status: 404 })
+
+    // Delete corresponding todo before deleting the task
+    if (task.assigneeId) {
+      try {
+        await db.todo.deleteMany({
+          where: {
+            assignedToId: task.assigneeId,
+            linkedTo: `deal:${id}`,
+            title: task.title,
+          }
+        })
+      } catch (todoError) {
+        console.error("Failed to delete synced todo:", todoError)
+      }
+    }
 
     await db.dealTask.delete({ where: { id: taskId } })
     return NextResponse.json({ message: "Task deleted" })

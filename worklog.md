@@ -332,3 +332,200 @@ Stage Summary:
 - CORS flexible enough for production + preview deployments
 - Voice note and video both use URL inputs (no file upload needed)
 - Next.js 16 config warning resolved
+
+---
+Task ID: 3+4
+Agent: Main
+Task: Upgrade Meetings Page with Participants/MeetingLink/Iconify + Sync Deal Tasks to Todo List
+
+Work Log:
+
+### Task 1: Meetings Page Upgrade
+
+1. **Updated /api/meetings/route.ts**:
+   - Added `meetingLink` and `participantIds` (array of strings) to Zod schema
+   - GET handler now includes `participants` with user data in response
+   - POST handler creates `MeetingParticipant` records for each participant after meeting creation
+   - Re-fetches meeting after creating participants to return complete data
+
+2. **Updated /api/meetings/[id]/route.ts**:
+   - GET handler now includes `participants` with user data
+   - PATCH handler supports `participantIds` - deletes old MeetingParticipant records and creates new ones
+   - Re-fetches meeting after updating participants to return complete data
+
+3. **Rewrote /feature/meetings/components/MeetingsPage.tsx**:
+   - Replaced all lucide-react icons with @iconify/react Icon components (mdi:calendar-outline, mdi:map-marker-outline, mdi:clock-outline, mdi:plus, mdi:magnify, mdi:delete-outline, mdi:video-outline, mdi:account-group-outline, mdi:check-circle-outline, mdi:close-circle-outline)
+   - Added `meetingLink` field to create/edit forms with video icon label
+   - Added Participants picker - toggle pills fetched from /api/spaces/${spaceId}/members
+   - Better card design showing: title + status badge with icon, date/time with clock icon, location with map pin, meeting link with video icon (clickable, opens in new tab), participants as small avatars/names, description snippet
+   - Form state includes meetingLink and participantIds
+   - Search functionality added
+   - Empty state with icon and helpful text
+   - Status badges use different icons per status (check-circle for Confirmed, close-circle for Cancelled)
+
+### Task 2: Sync Deal Tasks to User's Todo List
+
+1. **Updated /api/deals/[id]/tasks/route.ts** (POST handler):
+   - After creating a DealTask with assigneeId, also creates a Todo record
+   - Todo is linked via `linkedTo: deal:${id}` field
+   - Todo inherits title, description, dueDate from the DealTask
+   - Todo is assigned to the same user as the DealTask
+   - Wrapped in try/catch so todo sync failure doesn't fail the main request
+
+2. **Updated /api/deals/[id]/tasks/[taskId]/route.ts** (PATCH handler):
+   - When a task is toggled to completed, also updates the corresponding Todo status
+   - Todo status maps: completed=true → "Done", completed=false → "Todo"
+   - Uses updateMany with linkedTo and title match to find the right Todo
+
+3. **Updated /api/deals/[id]/tasks/[taskId]/route.ts** (DELETE handler):
+   - Before deleting a DealTask, also deletes the corresponding Todo
+   - Uses deleteMany with linkedTo, title, and assigneeId match
+
+4. **Updated /feature/todo/components/TodosPage.tsx**:
+   - Replaced all lucide-react icons with @iconify/react Icon components
+   - Added deal-linked badge detection: todos with linkedTo starting with "deal:" show an orange "Deal" badge
+   - Badge uses mdi:handshake-outline icon with orange styling (border, text, bg)
+   - Edit dialog shows a banner "From Deal — synced from deal task" for deal-linked todos
+   - Badge appears on both the card view and the edit dialog
+
+Stage Summary:
+- Meetings page fully upgraded with participants picker, meeting link, Iconify icons, and better card design
+- Meeting API routes support participantIds with full CRUD on MeetingParticipant records
+- Deal tasks now sync to assigned user's Todo list automatically
+- Todo status syncs when deal task completion is toggled
+- Todo is cleaned up when deal task is deleted
+- TodosPage shows "Deal" badge on deal-linked todos with visual indicator
+
+---
+Task ID: 6+7
+Agent: Main
+Task: Redesign Deals Page with Horizontal Card Layout + Iconify Icons
+
+Work Log:
+- Completely rewrote DealsPage.tsx with three major changes:
+
+1. HORIZONTAL CARD GRID VIEW (new default):
+   - Changed viewMode default from "pipeline" to "grid"
+   - Added responsive grid layout: 1 col (mobile), 2 col (tablet/md), 3 col (desktop/xl)
+   - Each card is a visually rich horizontal rectangle showing:
+     - Top: Deal title (bold) + colored stage badge
+     - Middle: Large currency value + probability percentage with icon
+     - Below: Industry icon + name | Company size icon + size
+     - Website URL link with globe icon + external link icon
+     - LinkedIn URL link with LinkedIn icon
+     - Email with mail icon
+     - Phone with phone icon
+     - Bottom bar: Owner avatar + name, main participant (small avatar + name), close date with calendar icon
+     - Quick action buttons on hover (Edit, Delete) - absolute positioned, visible on group hover
+   - Empty state with handshake icon and helpful message
+   - Cards have hover:shadow-lg and hover:-translate-y-0.5 effects
+
+2. ICONIFY ICONS REPLACEMENT:
+   - Removed all lucide-react imports (Plus, Search, Edit2, Trash2, ChevronLeft, ChevronRight, LayoutGrid, List, Globe, Linkedin, Building2, Users, Mail, Phone, ExternalLink)
+   - Added `import { Icon } from '@iconify/react'`
+   - All icon mappings replaced as specified (mdi:magnify, mdi:plus, mdi:pencil-outline, mdi:delete-outline, mdi:chevron-left, mdi:chevron-right, mdi:view-grid-outline, mdi:view-list-outline, mdi:web, mdi:linkedin, mdi:office-building-outline, mdi:account-group-outline, mdi:email-outline, mdi:phone-outline, mdi:open-in-new, mdi:calendar-outline, mdi:currency-usd, mdi:percent-outline, mdi:account-outline, mdi:link-variant)
+   - New icons added: mdi:handshake-outline (page header), mdi:chart-line (stats), mdi:trophy-outline (Win Rate stat), mdi:view-column-outline (pipeline toggle)
+   - View toggle now shows 3 options: Grid (mdi:view-grid-outline), Pipeline (mdi:view-column-outline), List (mdi:view-list-outline)
+
+3. DUPLICATE DEAL CREATION BUG FIX:
+   - Added submitGuardRef (useRef<boolean>) alongside submitting state
+   - handleCreate now checks both `submitting` state AND `submitGuardRef.current` ref before proceeding
+   - submitGuardRef is set to true immediately (synchronous), preventing race conditions where rapid clicks could pass the async state check
+   - Both guard and state are reset in finally block
+
+Additional improvements:
+- Added page header with handshake icon, title "Deals", and subtitle
+- Added stage filter pills row (separate from search controls)
+- Stats bar enhanced with icons for each metric
+- Cards use `relative` positioning for hover action buttons
+- All functionality preserved: create dialog, edit dialog, deal detail panel, search, stage filter, mobile view
+
+Stage Summary:
+- DealsPage default view is now the horizontal card grid
+- All lucide-react icons replaced with Iconify @iconify/react
+- Duplicate creation bug fixed with dual guard (state + ref)
+- View toggle supports 3 modes: Grid, Pipeline, List
+- Lint passes with no new errors (pre-existing errors are unrelated)
+
+---
+Task ID: 5
+Agent: Main
+Task: Make VoIP Fully Functional (Not Just Demo)
+
+Work Log:
+
+### 1. Install sip.js library
+- Ran `bun add sip.js` — installed sip.js@0.21.2
+
+### 2. Prisma Schema Updates
+- Added `VoipCallHistory` model with fields: id, userId, direction, fromNumber, toNumber, fromName, toName, duration, status, startedAt, endedAt
+- Added `wsPort` field (default "8089") to `VoipSettings` model for WebSocket port configuration
+- Added `voipCallHistory VoipCallHistory[]` relation to User model
+- Pushed schema to MySQL DB with `DATABASE_URL="mysql://..." npx prisma db push` — successful
+
+### 3. Created /api/voip/history route (GET + POST)
+- GET: Lists call history for current user (paginated, limit/offset, max 100)
+- POST: Creates call history record with validation (direction: inbound/outbound, status: completed/missed/cancelled)
+- Both endpoints require authentication via getServerSession
+
+### 4. Updated /api/voip/settings route
+- Added `wsPort` field to GET defaults and POST destructuring/save logic
+- wsPort defaults to "8089" for WSS connections
+
+### 5. Complete VoIPPanel.tsx Rewrite
+Major changes:
+
+**SIP.js Integration (real SIP calling):**
+- Created `SipManager` class that wraps sip.js library (dynamically imported, client-side only)
+- SipManager handles: connect (UA start + register), disconnect, dial (create Inviter + invite), answer (accept Invitation), reject, hangup, hold/unhold, sendDtmf (SIP INFO), blindTransfer (REFER)
+- SIP connection states tracked: disconnected → connecting → registering → registered → error
+- Replaces the simulated `setTimeout` dial-out with real SIP INVITE calls
+- Incoming SIP calls show incoming call UI with accept/reject options
+- Auto-connects to SIP when settings are loaded and configured
+
+**WebRTC Peer-to-Peer (unchanged):**
+- WebRTC calls between online CRM users still work via Socket.IO signaling
+- createPeerConnection, startCall, answerCall for WebRTC all preserved
+- Socket.IO connection on port 3003 unchanged
+
+**Call History Persistence:**
+- On call end, persistCallToDb() saves to /api/voip/history API
+- On component mount, call history loaded from /api/voip/history
+- Local state also maintained for immediate display
+
+**Settings UI Improvements:**
+- SIP Connection Status indicator at top of settings panel (shows registered/connecting/error state with colored dot)
+- Current SIP URI display (sip:username@domain)
+- WSS connection URL display
+- "Test Connection" button that attempts SIP registration and shows success/failure
+- WebSocket port (WSS) configuration field separate from SIP port
+- Error message display for SIP connection failures
+- Provider presets updated with wsPort values
+
+**Dialer Enhancements:**
+- Call duration timer during active calls (MM:SS format) — already existed, now also tracks callStartTime
+- Hold/unhold button (SIP calls only) — uses sip.js hold()/unhold()
+- Blind transfer button (SIP calls only) — shows transfer dialog with number input
+- DTMF tones — pressing dialpad keys during an active SIP call sends SIP INFO messages
+- Visual indicator on dialpad when in a SIP call (keys highlighted with primary color)
+- "SIP Call" label on call button when SIP is registered
+
+**Error Handling:**
+- SIP connection errors displayed as dismissible toast in main panel
+- Clear error messages when SIP not configured or not registered
+- Graceful fallback — if SIP fails, user gets clear message (not silent failure)
+
+### 6. Lint & Type Check
+- Fixed parsing error (typo `default"` → `default`)
+- Removed unnecessary eslint-disable comments
+- Lint passes with no VoIPPanel errors
+- TypeScript type check shows no VoIPPanel errors
+
+Stage Summary:
+- VoIP system now supports real SIP calls via sip.js (v0.21.2) with dynamic import
+- SIP connection, registration, outbound calls, inbound calls, DTMF, hold, transfer all implemented
+- WebRTC peer-to-peer calls between CRM users still work unchanged
+- Call history persisted to MySQL database via /api/voip/history API
+- VoipCallHistory model with full call metadata (direction, numbers, names, duration, status)
+- Settings UI shows connection status, SIP URI, test connection button, WSS port config
+- Dialer shows call timer, hold/unhold, transfer, DTMF during active SIP calls

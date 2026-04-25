@@ -9,6 +9,7 @@ const meetingSchema = z.object({
   description: z.string().optional(),
   notes: z.string().optional(),
   location: z.string().optional(),
+  meetingLink: z.string().optional(),
   status: z.enum(["Scheduled", "Confirmed", "Cancelled"]).default("Scheduled"),
   startDate: z.string(),
   endDate: z.string().optional(),
@@ -16,6 +17,7 @@ const meetingSchema = z.object({
   tags: z.string().optional(),
   linkedTo: z.string().optional(),
   assignedToId: z.string().optional(),
+  participantIds: z.array(z.string()).optional(),
   spaceId: z.string(),
 })
 
@@ -40,7 +42,14 @@ export async function GET(req: NextRequest) {
     if (status) where.status = status
 
     const meetings = await db.meeting.findMany({
-      where, include: { owner: { select: { id: true, name: true, email: true, image: true } }, assignedTo: { select: { id: true, name: true, email: true, image: true } } },
+      where,
+      include: {
+        owner: { select: { id: true, name: true, email: true, image: true } },
+        assignedTo: { select: { id: true, name: true, email: true, image: true } },
+        participants: {
+          include: { user: { select: { id: true, name: true, email: true, image: true } } }
+        }
+      },
       orderBy: { startDate: "asc" }
     })
     return NextResponse.json(meetings)
@@ -62,11 +71,49 @@ export async function POST(req: NextRequest) {
     }
 
     const data = meetingSchema.parse(body)
+    const { participantIds, ...meetingData } = data
 
     const meeting = await db.meeting.create({
-      data: { ...data, startDate: new Date(data.startDate), endDate: data.endDate ? new Date(data.endDate) : undefined, ownerId: userId },
-      include: { owner: { select: { id: true, name: true } } }
+      data: {
+        ...meetingData,
+        startDate: new Date(data.startDate),
+        endDate: data.endDate ? new Date(data.endDate) : undefined,
+        ownerId: userId,
+      },
+      include: {
+        owner: { select: { id: true, name: true } },
+        participants: {
+          include: { user: { select: { id: true, name: true, email: true, image: true } } }
+        }
+      }
     })
+
+    // Create MeetingParticipant records
+    if (participantIds && participantIds.length > 0) {
+      await db.meetingParticipant.createMany({
+        data: participantIds.map(pId => ({
+          meetingId: meeting.id,
+          userId: pId,
+        })),
+        skipDuplicates: true,
+      })
+
+      // Re-fetch to include participants
+      const updated = await db.meeting.findUnique({
+        where: { id: meeting.id },
+        include: {
+          owner: { select: { id: true, name: true } },
+          participants: {
+            include: { user: { select: { id: true, name: true, email: true, image: true } } }
+          }
+        }
+      })
+      if (updated) {
+        await db.activityLog.create({ data: { action: "Create", entity: "Meeting", entityId: meeting.id, details: `Created meeting "${meeting.title}"`, spaceId: data.spaceId, userId } })
+        return NextResponse.json(updated, { status: 201 })
+      }
+    }
+
     await db.activityLog.create({ data: { action: "Create", entity: "Meeting", entityId: meeting.id, details: `Created meeting "${meeting.title}"`, spaceId: data.spaceId, userId } })
     return NextResponse.json(meeting, { status: 201 })
   } catch (error: any) {

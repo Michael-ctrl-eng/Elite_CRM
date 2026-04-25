@@ -78,6 +78,7 @@ model User {
   activityLogs     ActivityLog[]
   emailSetting     EmailSettings?
   voipSetting      VoipSettings?
+  voipCallHistory  VoipCallHistory[]
   ownedApplicants  Applicant[]
   accounts         Account[]
   sessions         Session[]
@@ -86,6 +87,7 @@ model User {
   dealTaskAssignments DealTask[]   @relation("DealTaskAssignee")
   dealTaskCreated     DealTask[]   @relation("DealTaskCreator")
   dealAttachments     DealAttachment[] @relation("DealAttachmentUploader")
+  meetingParticipants MeetingParticipant[]
 }
 
 // ─── NEXTAUTH MODELS ───
@@ -293,6 +295,7 @@ model Meeting {
   description  String?  @db.Text
   notes        String?  @db.Text
   location     String?  @db.VarChar(255)
+  meetingLink  String?  @db.VarChar(500)
   status       String   @default("Scheduled") @db.VarChar(30)
   startDate    DateTime
   endDate      DateTime?
@@ -305,9 +308,25 @@ model Meeting {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  space      Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  owner      User  @relation(fields: [ownerId], references: [id])
-  assignedTo User? @relation("AssignedMeetings", fields: [assignedToId], references: [id])
+  space        Space              @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  owner        User               @relation(fields: [ownerId], references: [id])
+  assignedTo   User?              @relation("AssignedMeetings", fields: [assignedToId], references: [id])
+  participants MeetingParticipant[]
+}
+
+// ─── MEETING PARTICIPANT ───
+
+model MeetingParticipant {
+  id        String   @id @default(cuid()) @db.VarChar(30)
+  meetingId String   @db.VarChar(30)
+  userId    String   @db.VarChar(30)
+  createdAt DateTime @default(now())
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([meetingId, userId])
+  @@index([meetingId])
 }
 
 // ─── PROSPECT ───
@@ -411,6 +430,7 @@ model VoipSettings {
   id           String   @id @default(cuid()) @db.VarChar(30)
   sipServer    String   @default("") @db.VarChar(255)
   sipPort      String   @default("5060") @db.VarChar(10)
+  wsPort       String   @default("8089") @db.VarChar(10)
   sipUsername  String   @default("") @db.VarChar(255)
   sipPassword  String   @default("") @db.VarChar(255)
   sipDomain    String   @default("") @db.VarChar(255)
@@ -426,6 +446,26 @@ model VoipSettings {
   updatedAt    DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── VOIP CALL HISTORY ───
+
+model VoipCallHistory {
+  id          String    @id @default(cuid()) @db.VarChar(30)
+  userId      String    @db.VarChar(30)
+  direction   String    @db.VarChar(10) // inbound | outbound
+  fromNumber  String?   @db.VarChar(50)
+  toNumber    String?   @db.VarChar(50)
+  fromName    String?   @db.VarChar(255)
+  toName      String?   @db.VarChar(255)
+  duration    Int?      // seconds
+  status      String    @db.VarChar(20) // completed | missed | cancelled
+  startedAt   DateTime  @default(now())
+  endedAt     DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // ─── APPLICANT (Hiring) ───

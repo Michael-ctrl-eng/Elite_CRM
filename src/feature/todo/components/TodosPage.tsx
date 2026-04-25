@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Search, Trash2, Edit2 } from "lucide-react"
+import { Icon } from "@iconify/react"
 
 const STATUSES = ["Todo", "InProgress", "OnHold", "Done"]
 const PRIORITIES = ["Low", "Medium", "High", "Urgent"]
@@ -38,17 +38,23 @@ export default function TodosPage() {
 
   const filtered = todos.filter(t => (statusFilter === "all" || t.status === statusFilter) && (!search || t.title.toLowerCase().includes(search.toLowerCase())))
 
+  const isDealLinked = (todo: any) => todo.linkedTo && todo.linkedTo.startsWith("deal:")
+  const getDealId = (todo: any) => {
+    if (!isDealLinked(todo)) return null
+    return todo.linkedTo.replace("deal:", "")
+  }
+
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
-          <div className="relative flex-1 sm:flex-none"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Search todos..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 w-full sm:w-64 min-h-[44px]" /></div>
+          <div className="relative flex-1 sm:flex-none"><Icon icon="mdi:magnify" width={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Search todos..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 w-full sm:w-64 min-h-[44px]" /></div>
           {/* Desktop-only filter select */}
           {!isMobile && (
             <Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="w-36 min-h-[36px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All Status</SelectItem>{STATUSES.map(s => <SelectItem key={s} value={s}>{statusLabels[s]}</SelectItem>)}</SelectContent></Select>
           )}
         </div>
-        <Dialog open={showCreate} onOpenChange={setShowCreate}><DialogTrigger asChild><Button className="min-h-[44px] w-full sm:w-auto"><Plus size={14} /> Add Task</Button></DialogTrigger>
+        <Dialog open={showCreate} onOpenChange={setShowCreate}><DialogTrigger asChild><Button className="min-h-[44px] w-full sm:w-auto"><Icon icon="mdi:plus" width={16} className="mr-1" /> Add Task</Button></DialogTrigger>
           <DialogContent><DialogHeader><DialogTitle>Create Task</DialogTitle></DialogHeader><div className="space-y-3">
             <Input placeholder="Task Title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="min-h-[44px]" />
             <Input placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="min-h-[44px]" />
@@ -109,13 +115,27 @@ export default function TodosPage() {
                   {statusTodos.map(todo => (
                     <Card key={todo.id} className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98]" onClick={() => setEditTodo(todo)}>
                       <CardContent className="p-3 sm:p-3">
-                        <p className="text-sm font-medium">{todo.title}</p>
+                        <div className="flex items-start justify-between gap-1.5">
+                          <p className="text-sm font-medium">{todo.title}</p>
+                          {isDealLinked(todo) && (
+                            <Badge variant="outline" className="flex-shrink-0 text-[10px] px-1.5 py-0 gap-0.5 border-orange-300 text-orange-600 bg-orange-50 dark:bg-orange-950/30 dark:border-orange-800 dark:text-orange-400">
+                              <Icon icon="mdi:handshake-outline" width={10} />
+                              Deal
+                            </Badge>
+                          )}
+                        </div>
                         {todo.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{todo.description}</p>}
                         <div className="flex items-center justify-between mt-2">
                           <Badge variant={priorityColors[todo.priority] as any} className="text-xs">{todo.priority}</Badge>
                           {todo.dueDate && <span className="text-xs text-muted-foreground">{new Date(todo.dueDate).toLocaleDateString()}</span>}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">{todo.assignedTo?.name || todo.owner?.name}</p>
+                        <div className="flex items-center gap-1 mt-1.5">
+                          {todo.assignedTo?.name ? (
+                            <span className="text-xs text-muted-foreground">{todo.assignedTo.name}</span>
+                          ) : todo.owner?.name ? (
+                            <span className="text-xs text-muted-foreground">{todo.owner.name}</span>
+                          ) : null}
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
@@ -128,13 +148,19 @@ export default function TodosPage() {
 
       <Dialog open={!!editTodo} onOpenChange={() => setEditTodo(null)}><DialogContent><DialogHeader><DialogTitle>Edit Task</DialogTitle></DialogHeader>
         {editTodo && <div className="space-y-3">
+          {isDealLinked(editTodo) && (
+            <div className="flex items-center gap-2 p-2.5 rounded-md bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
+              <Icon icon="mdi:handshake-outline" width={16} className="text-orange-600 dark:text-orange-400 flex-shrink-0" />
+              <span className="text-xs text-orange-700 dark:text-orange-300">From Deal — synced from deal task</span>
+            </div>
+          )}
           <Input value={editTodo.title} onChange={e => setEditTodo({ ...editTodo, title: e.target.value })} className="min-h-[44px]" />
           <Input value={editTodo.description || ""} onChange={e => setEditTodo({ ...editTodo, description: e.target.value })} placeholder="Description" className="min-h-[44px]" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select value={editTodo.status} onValueChange={v => setEditTodo({ ...editTodo, status: v })}><SelectTrigger className="min-h-[44px]"><SelectValue /></SelectTrigger><SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{statusLabels[s]}</SelectItem>)}</SelectContent></Select>
             <Select value={editTodo.priority} onValueChange={v => setEditTodo({ ...editTodo, priority: v })}><SelectTrigger className="min-h-[44px]"><SelectValue /></SelectTrigger><SelectContent>{PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select>
           </div>
-          <div className="flex gap-2"><Button onClick={() => handleUpdate(editTodo.id, editTodo)} className="flex-1 min-h-[44px]">Save</Button><Button variant="destructive" onClick={() => { handleDelete(editTodo.id); setEditTodo(null) }} className="min-h-[44px] min-w-[44px]"><Trash2 size={14} /></Button></div>
+          <div className="flex gap-2"><Button onClick={() => handleUpdate(editTodo.id, editTodo)} className="flex-1 min-h-[44px]">Save</Button><Button variant="destructive" onClick={() => { handleDelete(editTodo.id); setEditTodo(null) }} className="min-h-[44px] min-w-[44px]"><Icon icon="mdi:delete-outline" width={16} /></Button></div>
         </div>}
       </DialogContent></Dialog>
     </div>

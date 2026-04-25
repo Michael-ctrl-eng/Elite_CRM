@@ -15,9 +15,26 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         owner: { select: { id: true, name: true, email: true, image: true } },
         contact: true,
         company: true,
+        mainParticipant: { select: { id: true, name: true, email: true, image: true } },
+        participants: {
+          include: { user: { select: { id: true, name: true, email: true, image: true } } }
+        },
         dealNotes: {
           include: {
             user: { select: { id: true, name: true, email: true, image: true } },
+          },
+          orderBy: { createdAt: "desc" },
+        },
+        tasks: {
+          include: {
+            assignee: { select: { id: true, name: true, email: true, image: true } },
+            creator: { select: { id: true, name: true, email: true } },
+          },
+          orderBy: { createdAt: "desc" },
+        },
+        attachments: {
+          include: {
+            uploader: { select: { id: true, name: true, email: true } },
           },
           orderBy: { createdAt: "desc" },
         },
@@ -26,7 +43,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!deal) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
     return NextResponse.json(deal)
-  } catch (error) { return NextResponse.json({ error: "Internal server error" }, { status: 500 }) }
+  } catch (error) {
+    console.error("Deal GET:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -41,10 +61,49 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const existingDeal = await db.deal.findUnique({ where: { id } })
     if (!existingDeal) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
+    // Separate participant data from deal data
+    const { participantIds, ...dealData } = body
+
     const deal = await db.deal.update({
       where: { id },
-      data: { ...body, closeDate: body.closeDate ? new Date(body.closeDate) : undefined },
+      data: {
+        ...dealData,
+        closeDate: dealData.closeDate ? new Date(dealData.closeDate) : undefined,
+      },
     })
+
+    // Update participants if provided
+    if (participantIds !== undefined) {
+      // Delete existing participants (except main)
+      await db.dealParticipant.deleteMany({
+        where: { dealId: id, role: "member" }
+      })
+
+      // Re-add participants (excluding main participant)
+      const mainId = dealData.mainParticipantId || existingDeal.mainParticipantId
+      const membersToAdd = participantIds.filter((pid: string) => pid !== mainId)
+
+      if (membersToAdd.length > 0) {
+        await db.dealParticipant.createMany({
+          data: membersToAdd.map((pid: string) => ({
+            dealId: id,
+            userId: pid,
+            role: "member",
+          })),
+          skipDuplicates: true,
+        })
+      }
+
+      // Update main participant
+      if (dealData.mainParticipantId) {
+        await db.dealParticipant.deleteMany({
+          where: { dealId: id, role: "main" }
+        })
+        await db.dealParticipant.create({
+          data: { dealId: id, userId: dealData.mainParticipantId, role: "main" }
+        }).catch(() => {})
+      }
+    }
 
     await db.activityLog.create({
       data: { action: "Update", entity: "Deal", entityId: id, details: `Updated deal "${deal.title}"`, spaceId: deal.spaceId, userId }
@@ -54,7 +113,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (body.stage !== undefined && body.stage !== existingDeal.stage) {
       const notificationMessage = `Deal '${deal.title}' moved to stage '${deal.stage}'`
 
-      // Find all admins and managers in the space (excluding current user and deal owner)
       const adminsAndManagers = await db.spaceMember.findMany({
         where: {
           spaceId: deal.spaceId,
@@ -64,7 +122,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         select: { userId: true },
       })
 
-      // Create notification for deal owner
       if (deal.ownerId !== userId) {
         await db.notification.create({
           data: {
@@ -80,7 +137,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         })
       }
 
-      // Create notifications for admins/managers
       if (adminsAndManagers.length > 0) {
         await db.notification.createMany({
           data: adminsAndManagers.map((member) => ({
@@ -98,7 +154,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     return NextResponse.json(deal)
-  } catch (error) { return NextResponse.json({ error: "Internal server error" }, { status: 500 }) }
+  } catch (error) {
+    console.error("Deal PATCH:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -117,5 +176,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     })
 
     return NextResponse.json({ message: "Deleted" })
-  } catch (error) { return NextResponse.json({ error: "Internal server error" }, { status: 500 }) }
+  } catch (error) {
+    console.error("Deal DELETE:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
 }

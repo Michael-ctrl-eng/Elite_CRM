@@ -81,6 +81,11 @@ model User {
   ownedApplicants  Applicant[]
   accounts         Account[]
   sessions         Session[]
+  mainDealParticipant Deal[]       @relation("MainDealParticipant")
+  dealParticipants    DealParticipant[]
+  dealTaskAssignments DealTask[]   @relation("DealTaskAssignee")
+  dealTaskCreated     DealTask[]   @relation("DealTaskCreator")
+  dealAttachments     DealAttachment[] @relation("DealAttachmentUploader")
 }
 
 // ─── NEXTAUTH MODELS ───
@@ -124,29 +129,99 @@ model VerificationToken {
 // ─── DEAL ───
 
 model Deal {
+  id              String    @id @default(cuid()) @db.VarChar(30)
+  title           String    @db.VarChar(255)
+  value           Float?
+  currency        String    @default("USD") @db.VarChar(10)
+  stage           String    @default("New") @db.VarChar(50)
+  probability     Int?
+  closeDate       DateTime?
+  description     String?   @db.Text
+  notes           String?   @db.Text
+  tags            String?   @db.Text
+  source          String?   @db.VarChar(100)
+  contactId       String?   @db.VarChar(30)
+  companyId       String?   @db.VarChar(30)
+  spaceId         String    @db.VarChar(30)
+  ownerId         String    @db.VarChar(30)
+  websiteUrl      String?   @db.VarChar(500)
+  linkedInUrl     String?   @db.VarChar(500)
+  industry        String?   @db.VarChar(100)
+  companySize     String?   @db.VarChar(50)
+  dealEmail       String?   @db.VarChar(255)
+  dealPhone       String?   @db.VarChar(50)
+  mainParticipantId String? @db.VarChar(30)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  space           Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  owner           User     @relation(fields: [ownerId], references: [id])
+  contact         Customer? @relation(fields: [contactId], references: [id])
+  company         Company?  @relation(fields: [companyId], references: [id])
+  mainParticipant User?    @relation("MainDealParticipant", fields: [mainParticipantId], references: [id])
+  dealNotes       DealNote[]
+  participants    DealParticipant[]
+  tasks           DealTask[]
+  attachments     DealAttachment[]
+
+  @@index([spaceId])
+  @@index([stage])
+}
+
+// ─── DEAL PARTICIPANT ───
+
+model DealParticipant {
+  id        String   @id @default(cuid()) @db.VarChar(30)
+  dealId    String   @db.VarChar(30)
+  userId    String   @db.VarChar(30)
+  role      String   @default("member") @db.VarChar(30) // main | member
+  createdAt DateTime @default(now())
+
+  deal Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([dealId, userId])
+  @@index([dealId])
+}
+
+// ─── DEAL TASK ───
+
+model DealTask {
   id          String    @id @default(cuid()) @db.VarChar(30)
+  dealId      String    @db.VarChar(30)
   title       String    @db.VarChar(255)
-  value       Float?
-  currency    String    @default("USD") @db.VarChar(10)
-  stage       String    @default("New") @db.VarChar(50)
-  probability Int?
-  closeDate   DateTime?
   description String?   @db.Text
-  notes       String?   @db.Text
-  tags        String?   @db.Text
-  source      String?   @db.VarChar(100)
-  contactId   String?   @db.VarChar(30)
-  companyId   String?   @db.VarChar(30)
-  spaceId     String    @db.VarChar(30)
-  ownerId     String    @db.VarChar(30)
+  dueDate     DateTime?
+  completed   Boolean   @default(false)
+  assigneeId  String?   @db.VarChar(30)
+  createdBy   String    @db.VarChar(30)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  space   Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  owner   User     @relation(fields: [ownerId], references: [id])
-  contact Customer? @relation(fields: [contactId], references: [id])
-  company Company?  @relation(fields: [companyId], references: [id])
-  dealNotes DealNote[]
+  deal     Deal  @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  assignee User? @relation("DealTaskAssignee", fields: [assigneeId], references: [id])
+  creator  User  @relation("DealTaskCreator", fields: [createdBy], references: [id])
+
+  @@index([dealId])
+  @@index([completed])
+}
+
+// ─── DEAL ATTACHMENT ───
+
+model DealAttachment {
+  id          String   @id @default(cuid()) @db.VarChar(30)
+  dealId      String   @db.VarChar(30)
+  fileName    String   @db.VarChar(255)
+  filePath    String   @db.Text
+  fileSize    Int?
+  mimeType    String?  @db.VarChar(100)
+  uploadedBy  String   @db.VarChar(30)
+  createdAt   DateTime @default(now())
+
+  deal    Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  uploader User @relation("DealAttachmentUploader", fields: [uploadedBy], references: [id])
+
+  @@index([dealId])
 }
 
 // ─── DEAL NOTE ───

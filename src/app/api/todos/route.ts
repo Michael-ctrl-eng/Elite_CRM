@@ -16,6 +16,8 @@ const todoSchema = z.object({
   assignedToId: z.string().optional(),
   reminderMinutes: z.number().int().min(1).nullable().optional(),
   spaceId: z.string(),
+  dealTaskId: z.string().optional(),
+  dealParticipantRole: z.string().optional(),
 })
 
 export async function GET(req: NextRequest) {
@@ -48,7 +50,41 @@ export async function GET(req: NextRequest) {
       },
       orderBy: { createdAt: "desc" }
     })
-    return NextResponse.json(todos)
+
+    // Enrich deal-linked todos with deal context
+    const dealIds = new Set<string>()
+    todos.forEach((t: any) => {
+      if (t.linkedTo?.startsWith('deal:')) {
+        dealIds.add(t.linkedTo.replace('deal:', ''))
+      }
+    })
+    
+    let dealContextMap: Record<string, any> = {}
+    if (dealIds.size > 0) {
+      const deals = await db.deal.findMany({
+        where: { id: { in: Array.from(dealIds) } },
+        select: {
+          id: true,
+          title: true,
+          stage: true,
+          value: true,
+          currency: true,
+          mainParticipantId: true,
+          mainParticipant: { select: { id: true, name: true, email: true } },
+        }
+      })
+      deals.forEach((d: any) => { dealContextMap[d.id] = d })
+    }
+
+    const enrichedTodos = todos.map((t: any) => {
+      const dealId = t.linkedTo?.startsWith('deal:') ? t.linkedTo.replace('deal:', '') : null
+      return {
+        ...t,
+        dealContext: dealId ? dealContextMap[dealId] || null : null,
+      }
+    })
+
+    return NextResponse.json(enrichedTodos)
   } catch (error) { return NextResponse.json({ error: "Internal server error" }, { status: 500 }) }
 }
 

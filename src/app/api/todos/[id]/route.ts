@@ -15,7 +15,9 @@ const patchSchema = z.object({
   tags: z.string().optional(),
   linkedTo: z.string().optional(),
   assignedToId: z.string().nullable().optional(),
-}).strict()
+  dealTaskId: z.string().optional(),
+  dealParticipantRole: z.string().optional(),
+})
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -45,6 +47,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     const todo = await db.todo.update({ where: { id }, data: updateData })
     await db.activityLog.create({ data: { action: "Update", entity: "Todo", entityId: id, details: `Updated todo "${todo.title}"`, spaceId: todo.spaceId, userId } })
+
+    // If this is a deal-linked todo and status changed, sync back to DealTask
+    if (todo.dealTaskId && data.status !== undefined) {
+      try {
+        // Check if ALL participant todos for this dealTask are Done
+        const allParticipantTodos = await db.todo.findMany({
+          where: { dealTaskId: todo.dealTaskId },
+          select: { status: true },
+        })
+        const allDone = allParticipantTodos.length > 0 && allParticipantTodos.every(t => t.status === 'Done')
+        
+        await db.dealTask.update({
+          where: { id: todo.dealTaskId },
+          data: { completed: allDone },
+        })
+      } catch (syncError) {
+        console.error("Failed to sync todo status back to deal task:", syncError)
+      }
+    }
+
     return NextResponse.json(todo)
   } catch (error: any) {
     if (error instanceof z.ZodError) return NextResponse.json({ error: error.errors[0].message }, { status: 422 })
@@ -60,8 +82,30 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const userId = (session.user as any).id
     const todo = await db.todo.findUnique({ where: { id } })
     if (!todo) return NextResponse.json({ error: "Not found" }, { status: 404 })
+    
+    const dealTaskId = todo.dealTaskId
+    
     await db.todo.delete({ where: { id } })
     await db.activityLog.create({ data: { action: "Delete", entity: "Todo", entityId: id, details: `Deleted todo "${todo.title}"`, spaceId: todo.spaceId, userId } })
+    
+    // If this was a deal-linked todo, update the DealTask status
+    if (dealTaskId) {
+      try {
+        const remainingTodos = await db.todo.findMany({
+          where: { dealTaskId },
+          select: { status: true },
+        })
+        const allDone = remainingTodos.length > 0 && remainingTodos.every(t => t.status === 'Done')
+        
+        await db.dealTask.update({
+          where: { id: dealTaskId },
+          data: { completed: allDone },
+        })
+      } catch (syncError) {
+        console.error("Failed to sync deal task after todo deletion:", syncError)
+      }
+    }
+    
     return NextResponse.json({ message: "Deleted" })
   } catch (error) { return NextResponse.json({ error: "Internal server error" }, { status: 500 }) }
 }

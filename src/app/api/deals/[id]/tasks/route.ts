@@ -63,26 +63,53 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       },
     })
 
-    // Sync to Todo if assigneeId is provided
-    if (data.assigneeId) {
-      try {
-        await db.todo.create({
-          data: {
-            title: data.title,
-            description: data.description || `Task from deal: ${deal.title}`,
-            status: "Todo",
-            priority: "Medium",
-            dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
-            linkedTo: `deal:${id}`,
-            assignedToId: data.assigneeId,
-            spaceId: deal.spaceId,
-            ownerId: userId,
-          }
-        })
-      } catch (todoError) {
-        console.error("Failed to sync deal task to todo:", todoError)
-        // Don't fail the main request if todo sync fails
+    // Sync to Todos for ALL deal participants
+    try {
+      // Get all deal participants
+      const participants = await db.dealParticipant.findMany({
+        where: { dealId: id },
+        select: { userId: true, role: true },
+      })
+      
+      // Also include main participant if not already in participants list
+      const mainParticipantId = deal.mainParticipantId
+      const participantIds = new Set(participants.map(p => p.userId))
+      
+      const allParticipants = [...participants]
+      if (mainParticipantId && !participantIds.has(mainParticipantId)) {
+        allParticipants.push({ userId: mainParticipantId, role: 'main' })
       }
+      
+      // Also include the deal owner as a participant if not already included
+      if (deal.ownerId && !participantIds.has(deal.ownerId) && deal.ownerId !== mainParticipantId) {
+        allParticipants.push({ userId: deal.ownerId, role: 'member' })
+      }
+
+      // Create a Todo for each participant
+      if (allParticipants.length > 0) {
+        const currencySymbol = deal.currency === 'EUR' ? '€' : deal.currency === 'GBP' ? '£' : '$'
+        const dealContext = `Deal: ${deal.title} | Stage: ${deal.stage}${deal.value ? ` | Value: ${currencySymbol}${deal.value.toLocaleString()}` : ''}`
+        
+        await db.todo.createMany({
+          data: allParticipants.map(p => ({
+            title: data.title,
+            description: data.description ? `${data.description}\n\n${dealContext}` : dealContext,
+            status: "Todo" as const,
+            priority: "Medium" as const,
+            dueDate: data.dueDate ? new Date(data.dueDate) : null,
+            linkedTo: `deal:${id}`,
+            assignedToId: p.userId,
+            spaceId: deal.spaceId,
+            ownerId: p.userId,
+            dealTaskId: task.id,
+            dealParticipantRole: p.role,
+          })),
+          skipDuplicates: true,
+        })
+      }
+    } catch (todoError) {
+      console.error("Failed to sync deal task to participant todos:", todoError)
+      // Don't fail the main request
     }
 
     return NextResponse.json(task, { status: 201 })

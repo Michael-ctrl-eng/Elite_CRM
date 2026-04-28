@@ -279,12 +279,17 @@ model Todo {
   assignedToId    String?  @db.VarChar(30)
   spaceId         String   @db.VarChar(30)
   ownerId         String   @db.VarChar(30)
+  dealTaskId      String?  @db.VarChar(30)  // Links to DealTask for bi-directional sync
+  dealParticipantRole String? @db.VarChar(30) // Role of the user in the deal (main/member)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   space      Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   owner      User  @relation(fields: [ownerId], references: [id])
   assignedTo User? @relation("AssignedTodos", fields: [assignedToId], references: [id])
+
+  @@index([dealTaskId])
+  @@index([linkedTo])
 }
 
 // ─── MEETING ───

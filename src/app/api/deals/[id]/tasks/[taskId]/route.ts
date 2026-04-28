@@ -29,20 +29,30 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       },
     })
 
-    // Sync todo status when task completion is toggled
-    if (updatedTask.assigneeId) {
-      try {
+    // Sync todo status when task is toggled - use dealTaskId for reliable matching
+    try {
+      if (body.completed !== undefined) {
         await db.todo.updateMany({
-          where: {
-            assignedToId: updatedTask.assigneeId,
-            linkedTo: `deal:${id}`,
-            title: updatedTask.title,
-          },
+          where: { dealTaskId: taskId },
           data: { status: updatedTask.completed ? "Done" : "Todo" }
         })
-      } catch (todoError) {
-        console.error("Failed to sync deal task status to todo:", todoError)
       }
+      // Sync title changes
+      if (body.title !== undefined) {
+        await db.todo.updateMany({
+          where: { dealTaskId: taskId },
+          data: { title: body.title }
+        })
+      }
+      // Sync due date changes
+      if (body.dueDate !== undefined) {
+        await db.todo.updateMany({
+          where: { dealTaskId: taskId },
+          data: { dueDate: body.dueDate ? new Date(body.dueDate) : null }
+        })
+      }
+    } catch (todoError) {
+      console.error("Failed to sync deal task update to todos:", todoError)
     }
 
     return NextResponse.json(updatedTask)
@@ -62,19 +72,13 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const task = await db.dealTask.findFirst({ where: { id: taskId, dealId: id } })
     if (!task) return NextResponse.json({ error: "Task not found" }, { status: 404 })
 
-    // Delete corresponding todo before deleting the task
-    if (task.assigneeId) {
-      try {
-        await db.todo.deleteMany({
-          where: {
-            assignedToId: task.assigneeId,
-            linkedTo: `deal:${id}`,
-            title: task.title,
-          }
-        })
-      } catch (todoError) {
-        console.error("Failed to delete synced todo:", todoError)
-      }
+    // Delete corresponding todos using dealTaskId
+    try {
+      await db.todo.deleteMany({
+        where: { dealTaskId: taskId }
+      })
+    } catch (todoError) {
+      console.error("Failed to delete synced todos:", todoError)
     }
 
     await db.dealTask.delete({ where: { id: taskId } })

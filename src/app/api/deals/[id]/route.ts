@@ -105,6 +105,76 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     }
 
+    // Sync todos for existing deal tasks when participants change
+    if (participantIds !== undefined) {
+      try {
+        const existingTasks = await db.dealTask.findMany({
+          where: { dealId: id },
+          select: { id: true, title: true, description: true, dueDate: true, completed: true },
+        })
+        
+        const updatedDeal = await db.deal.findUnique({ where: { id } })
+        const updatedParticipants = await db.dealParticipant.findMany({
+          where: { dealId: id },
+          select: { userId: true, role: true },
+        })
+        
+        // Build current participant set
+        const currentParticipantIds = new Set(updatedParticipants.map(p => p.userId))
+        if (updatedDeal?.mainParticipantId) currentParticipantIds.add(updatedDeal.mainParticipantId)
+        if (updatedDeal?.ownerId) currentParticipantIds.add(updatedDeal.ownerId)
+        
+        const allParticipantRoles = new Map<string, string>()
+        updatedParticipants.forEach(p => allParticipantRoles.set(p.userId, p.role))
+        if (updatedDeal?.mainParticipantId) allParticipantRoles.set(updatedDeal.mainParticipantId, 'main')
+        if (updatedDeal?.ownerId) allParticipantRoles.set(updatedDeal.ownerId, 'member')
+
+        for (const dt of existingTasks) {
+          // Delete todos for removed participants
+          await db.todo.deleteMany({
+            where: {
+              dealTaskId: dt.id,
+              assignedToId: { notIn: Array.from(currentParticipantIds) },
+            },
+          })
+
+          // Find which participants already have todos for this task
+          const existingTodos = await db.todo.findMany({
+            where: { dealTaskId: dt.id },
+            select: { assignedToId: true },
+          })
+          const existingTodoUserIds = new Set(existingTodos.map(t => t.assignedToId))
+
+          // Create todos for new participants who don't have one yet
+          const newParticipants = Array.from(currentParticipantIds).filter(pid => !existingTodoUserIds.has(pid))
+          
+          if (newParticipants.length > 0) {
+            const currencySymbol = updatedDeal?.currency === 'EUR' ? '€' : updatedDeal?.currency === 'GBP' ? '£' : '$'
+            const dealContext = `Deal: ${updatedDeal?.title} | Stage: ${updatedDeal?.stage}${updatedDeal?.value ? ` | Value: ${currencySymbol}${updatedDeal.value.toLocaleString()}` : ''}`
+            
+            await db.todo.createMany({
+              data: newParticipants.map(pid => ({
+                title: dt.title,
+                description: dt.description ? `${dt.description}\n\n${dealContext}` : dealContext,
+                status: dt.completed ? "Done" : "Todo",
+                priority: "Medium",
+                dueDate: dt.dueDate,
+                linkedTo: `deal:${id}`,
+                assignedToId: pid,
+                spaceId: updatedDeal!.spaceId,
+                ownerId: pid,
+                dealTaskId: dt.id,
+                dealParticipantRole: allParticipantRoles.get(pid) || 'member',
+              })),
+              skipDuplicates: true,
+            })
+          }
+        }
+      } catch (syncError) {
+        console.error("Failed to sync participant todos:", syncError)
+      }
+    }
+
     await db.activityLog.create({
       data: { action: "Update", entity: "Deal", entityId: id, details: `Updated deal "${deal.title}"`, spaceId: deal.spaceId, userId }
     })
